@@ -154,6 +154,7 @@ export default defineConfig({
     zh: {
       label: '简体中文',
       lang: 'zh-CN',
+      link: '/zh/getting-started/01-introduction',
       title: 'OpenViking',
       description: '面向 AI Agent 的开源上下文数据库',
       themeConfig: {
