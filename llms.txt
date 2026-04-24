@@ -1,0 +1,128 @@
+# OpenViking
+
+> Open-source context database for AI Agents. OpenViking unifies memory, resources, and skills management for AI Agents through a file system paradigm.
+
+- Source: https://github.com/volcengine/OpenViking
+
+## design
+
+- [Account 级 User / Agent 命名空间策略与共享 Session 设计方案](https://volcengine.github.io/OpenViking/design/account-namespace-shared-session-design)
+- [OpenViking 本地 Embedding Llama-cpp 设计文档](https://volcengine.github.io/OpenViking/design/local-embedding-llama-cpp-design)
+- [Memory Extractor Templating and Update Mechanism Optimization / 记忆抽取模版与更新机制优化](https://volcengine.github.io/OpenViking/design/memory-extractor-optimization)
+- [OpenViking 指标体系设计方案](https://volcengine.github.io/OpenViking/design/metric-design)
+- [OpenViking 多租户设计方案](https://volcengine.github.io/OpenViking/design/multi-tenant-design)
+- [OpenClaw Plugin 升级为真正上下文引擎的设计方案](https://volcengine.github.io/OpenViking/design/openclaw-context-engine-refactor)
+- [OpenClaw Context Engine Integration Design / OpenClaw 上下文引擎集成方案设计](https://volcengine.github.io/OpenViking/design/openclaw-integration)
+- [OpenViking 解析器两层架构重构](https://volcengine.github.io/OpenViking/design/parser-two-layer-refactor-plan)
+
+## en/about
+
+- [OpenViking Team and Organization](https://volcengine.github.io/OpenViking/en/about/01-about-us)
+- [Changelog](https://volcengine.github.io/OpenViking/en/about/02-changelog)
+- [Roadmap](https://volcengine.github.io/OpenViking/en/about/03-roadmap)
+
+## en/api
+
+- [API Overview](https://volcengine.github.io/OpenViking/en/api/01-overview)
+- [Resources](https://volcengine.github.io/OpenViking/en/api/02-resources)
+- [File System](https://volcengine.github.io/OpenViking/en/api/03-filesystem)
+- [Skills](https://volcengine.github.io/OpenViking/en/api/04-skills)
+- [Sessions](https://volcengine.github.io/OpenViking/en/api/05-sessions)
+- [Retrieval](https://volcengine.github.io/OpenViking/en/api/06-retrieval)
+- [System and Monitoring](https://volcengine.github.io/OpenViking/en/api/07-system)
+- [Admin (Multi-tenant)](https://volcengine.github.io/OpenViking/en/api/08-admin)
+- [Metrics](https://volcengine.github.io/OpenViking/en/api/09-metrics)
+
+## en/concepts
+
+- [Architecture Overview](https://volcengine.github.io/OpenViking/en/concepts/01-architecture)
+- [Context Types](https://volcengine.github.io/OpenViking/en/concepts/02-context-types)
+- [Context Layers (L0/L1/L2)](https://volcengine.github.io/OpenViking/en/concepts/03-context-layers)
+- [Viking URI](https://volcengine.github.io/OpenViking/en/concepts/04-viking-uri)
+- [Storage Architecture](https://volcengine.github.io/OpenViking/en/concepts/05-storage)
+- [Context Extraction](https://volcengine.github.io/OpenViking/en/concepts/06-extraction)
+- [Retrieval Mechanism](https://volcengine.github.io/OpenViking/en/concepts/07-retrieval)
+- [Session Management](https://volcengine.github.io/OpenViking/en/concepts/08-session)
+- [Path Locks and Crash Recovery](https://volcengine.github.io/OpenViking/en/concepts/09-transaction)
+- [Data Encryption](https://volcengine.github.io/OpenViking/en/concepts/10-encryption)
+- [Multi-Tenant](https://volcengine.github.io/OpenViking/en/concepts/11-multi-tenant)
+- [Metrics](https://volcengine.github.io/OpenViking/en/concepts/12-metrics)
+
+## en/faq
+
+- [FAQ](https://volcengine.github.io/OpenViking/en/faq/faq)
+
+## en/getting-started
+
+- [Introduction](https://volcengine.github.io/OpenViking/en/getting-started/01-introduction)
+- [Quick Start](https://volcengine.github.io/OpenViking/en/getting-started/02-quickstart)
+- [Quick Start: Server Mode](https://volcengine.github.io/OpenViking/en/getting-started/03-quickstart-server)
+
+## en/guides
+
+- [Configuration](https://volcengine.github.io/OpenViking/en/guides/01-configuration)
+- [Volcengine Model Purchase Guide](https://volcengine.github.io/OpenViking/en/guides/02-volcengine-purchase-guide)
+- [Server Deployment](https://volcengine.github.io/OpenViking/en/guides/03-deployment)
+- [Authentication](https://volcengine.github.io/OpenViking/en/guides/04-authentication)
+- [Observability & Diagnostics](https://volcengine.github.io/OpenViking/en/guides/05-observability)
+- [MCP Integration Guide](https://volcengine.github.io/OpenViking/en/guides/06-mcp-integration)
+- [Operation Telemetry Reference](https://volcengine.github.io/OpenViking/en/guides/07-operation-telemetry)
+- [Encryption Guide](https://volcengine.github.io/OpenViking/en/guides/08-encryption)
+- [OVPack Import and Export](https://volcengine.github.io/OpenViking/en/guides/09-ovpack)
+- [OpenViking Prompt Guide and Customization](https://volcengine.github.io/OpenViking/en/guides/10-prompt-guide)
+
+## zh/about
+
+- [OpenViking 团队与组织](https://volcengine.github.io/OpenViking/zh/about/01-about-us)
+- [更新日志](https://volcengine.github.io/OpenViking/zh/about/02-changelog)
+- [路线图](https://volcengine.github.io/OpenViking/zh/about/03-roadmap)
+
+## zh/api
+
+- [API 概览](https://volcengine.github.io/OpenViking/zh/api/01-overview)
+- [资源管理](https://volcengine.github.io/OpenViking/zh/api/02-resources)
+- [文件系统](https://volcengine.github.io/OpenViking/zh/api/03-filesystem)
+- [技能](https://volcengine.github.io/OpenViking/zh/api/04-skills)
+- [会话管理](https://volcengine.github.io/OpenViking/zh/api/05-sessions)
+- [检索](https://volcengine.github.io/OpenViking/zh/api/06-retrieval)
+- [系统与监控](https://volcengine.github.io/OpenViking/zh/api/07-system)
+- [管理员（多租户）](https://volcengine.github.io/OpenViking/zh/api/08-admin)
+- [指标与 Metrics](https://volcengine.github.io/OpenViking/zh/api/09-metrics)
+
+## zh/concepts
+
+- [架构概述](https://volcengine.github.io/OpenViking/zh/concepts/01-architecture)
+- [上下文类型](https://volcengine.github.io/OpenViking/zh/concepts/02-context-types)
+- [上下文层级 (L0/L1/L2)](https://volcengine.github.io/OpenViking/zh/concepts/03-context-layers)
+- [Viking URI](https://volcengine.github.io/OpenViking/zh/concepts/04-viking-uri)
+- [存储架构](https://volcengine.github.io/OpenViking/zh/concepts/05-storage)
+- [上下文提取](https://volcengine.github.io/OpenViking/zh/concepts/06-extraction)
+- [检索机制](https://volcengine.github.io/OpenViking/zh/concepts/07-retrieval)
+- [会话管理](https://volcengine.github.io/OpenViking/zh/concepts/08-session)
+- [路径锁与崩溃恢复](https://volcengine.github.io/OpenViking/zh/concepts/09-transaction)
+- [数据加密](https://volcengine.github.io/OpenViking/zh/concepts/10-encryption)
+- [多租户](https://volcengine.github.io/OpenViking/zh/concepts/11-multi-tenant)
+- [指标与 Metrics](https://volcengine.github.io/OpenViking/zh/concepts/12-metrics)
+
+## zh/faq
+
+- [常见问题](https://volcengine.github.io/OpenViking/zh/faq/faq)
+
+## zh/getting-started
+
+- [简介](https://volcengine.github.io/OpenViking/zh/getting-started/01-introduction)
+- [快速开始](https://volcengine.github.io/OpenViking/zh/getting-started/02-quickstart)
+- [快速开始：服务端模式](https://volcengine.github.io/OpenViking/zh/getting-started/03-quickstart-server)
+
+## zh/guides
+
+- [配置](https://volcengine.github.io/OpenViking/zh/guides/01-configuration)
+- [火山引擎模型购买指南](https://volcengine.github.io/OpenViking/zh/guides/02-volcengine-purchase-guide)
+- [服务端部署](https://volcengine.github.io/OpenViking/zh/guides/03-deployment)
+- [认证](https://volcengine.github.io/OpenViking/zh/guides/04-authentication)
+- [可观测性与排障](https://volcengine.github.io/OpenViking/zh/guides/05-observability)
+- [MCP 集成指南](https://volcengine.github.io/OpenViking/zh/guides/06-mcp-integration)
+- [操作级 Telemetry 参考](https://volcengine.github.io/OpenViking/zh/guides/07-operation-telemetry)
+- [加密指南](https://volcengine.github.io/OpenViking/zh/guides/08-encryption)
+- [OVPack 导入导出](https://volcengine.github.io/OpenViking/zh/guides/09-ovpack)
+- [OpenViking Prompt 说明与自定义指南](https://volcengine.github.io/OpenViking/zh/guides/10-prompt-guide)
