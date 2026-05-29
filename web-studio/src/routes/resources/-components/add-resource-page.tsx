@@ -10,6 +10,7 @@ import {
   Loader2Icon,
   Upload,
 } from 'lucide-react'
+import { nanoid } from 'nanoid'
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
@@ -49,13 +50,7 @@ type SelectedUploadFile = {
 }
 
 function createLocalFileId(): string {
-  if (
-    typeof crypto !== 'undefined' &&
-    typeof crypto.randomUUID === 'function'
-  ) {
-    return crypto.randomUUID()
-  }
-  return `local-file-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return `local-file-${nanoid()}`
 }
 
 async function detectFileType(file: File): Promise<string | null> {

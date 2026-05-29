@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { nanoid } from 'nanoid'
 import { toast } from 'sonner'
 
 import {
@@ -110,13 +111,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 function createTaskId(): string {
-  if (
-    typeof crypto !== 'undefined' &&
-    typeof crypto.randomUUID === 'function'
-  ) {
-    return crypto.randomUUID()
-  }
-  return `upload-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return `upload-${nanoid()}`
 }
 
 function createRemoteTaskName(url: string): string {

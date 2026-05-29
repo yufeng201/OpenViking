@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { nanoid } from 'nanoid'
 
 import type { ChatStatus, StreamToolCall } from './types/chat'
 import type { Message, MessagePart, TextPart, ToolPart } from './types/message'
@@ -8,7 +9,7 @@ import { parseSseStream, streamEventDataToText } from './sse'
 import { setSessionTitle } from './use-session-titles'
 
 function generateId(): string {
-  return `msg_${crypto.randomUUID().replace(/-/g, '')}`
+  return `msg_${nanoid()}`
 }
 
 function createUserMessage(content: string): Message {
