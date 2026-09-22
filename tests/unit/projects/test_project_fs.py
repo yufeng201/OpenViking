@@ -8,7 +8,7 @@ from openviking.core.workspace import WorkspaceTarget
 from openviking.server.identity import Role
 from openviking.storage.acl import AclAction
 from openviking.storage.viking_fs import VikingFS
-from openviking_cli.exceptions import PermissionDeniedError
+from openviking_cli.exceptions import ConflictError, PermissionDeniedError
 from tests.unit.projects.test_project_service import create, ctx
 
 
@@ -79,5 +79,5 @@ async def test_accepted_worker_survives_member_removal_but_not_archive(setup):
     with pytest.raises(PermissionDeniedError):
         await fs._ensure_access("viking://user/alice/memories/a.md", worker, action=AclAction.WRITE)
     await service.update(ctx(role=Role.ADMIN), "orders", {"status": "archived"})
-    with pytest.raises(PermissionDeniedError):
+    with pytest.raises(ConflictError, match="archived"):
         await fs._ensure_access(uri, worker, action=AclAction.WRITE)

@@ -3,7 +3,7 @@
 from openviking.server.identity import Role
 from openviking.server.project_store import ProjectStore
 from openviking.storage.acl import AclAction
-from openviking_cli.exceptions import NotFoundError
+from openviking_cli.exceptions import ConflictError, NotFoundError
 
 
 async def project_access(agfs, uri, ctx, action):
@@ -35,23 +35,30 @@ async def project_access(agfs, uri, ctx, action):
         return True
     if ctx.workspace_target is None:
         return False
-    if project["status"] != "active" or len(parts) < 3:
-        return False
-    if parts[2] == "skills":
+    if len(parts) < 3 or parts[2] == "skills":
         return False
     if action == AclAction.MANAGE:
-        return ctx.role in {Role.ADMIN, Role.ROOT} and len(parts) > 3
-    if parts[2] == "resources":
-        return True
-    if parts[2] == "memories":
-        return worker or ctx.role in {Role.ADMIN, Role.ROOT}
-    if parts[2] != "sessions" or not ctx.workspace_session_uri:
+        allowed = ctx.role in {Role.ADMIN, Role.ROOT} and len(parts) > 3
+    elif parts[2] == "resources":
+        allowed = True
+    elif parts[2] == "memories":
+        allowed = worker or ctx.role in {Role.ADMIN, Role.ROOT}
+    elif parts[2] == "sessions" and ctx.workspace_session_uri:
+        session_uri = ctx.workspace_session_uri
+        if uri != session_uri and not uri.startswith(session_uri + "/"):
+            return False
+        if worker:
+            allowed = True
+        else:
+            meta_path = (
+                f"/local/{ctx.account_id}/" + session_uri.removeprefix("viking://") + "/.meta.json"
+            )
+            meta = await store.read_json(meta_path)
+            allowed = meta is None or meta.get("created_by_user_id") == ctx.user.user_id
+    else:
         return False
-    session_uri = ctx.workspace_session_uri
-    if uri != session_uri and not uri.startswith(session_uri + "/"):
-        return False
-    if worker:
-        return True
-    meta_path = f"/local/{ctx.account_id}/" + session_uri.removeprefix("viking://") + "/.meta.json"
-    meta = await store.read_json(meta_path)
-    return meta is None or meta.get("created_by_user_id") == ctx.user.user_id
+    # Check authorization first: archival must not turn forbidden operations
+    # into state conflicts or disclose project state to non-members.
+    if allowed and project["status"] != "active":
+        raise ConflictError("Project is archived and read-only", resource=uri)
+    return allowed

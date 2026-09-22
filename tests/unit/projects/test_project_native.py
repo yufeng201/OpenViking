@@ -12,7 +12,7 @@ from openviking.service.project_service import ProjectService
 from openviking.session.session import Session
 from openviking.storage.viking_fs import VikingFS
 from openviking.utils.agfs_utils import RagfsBindingConfig, create_agfs_client
-from openviking_cli.exceptions import PermissionDeniedError
+from openviking_cli.exceptions import ConflictError, PermissionDeniedError
 from openviking_cli.utils.config.agfs_config import AGFSConfig
 from tests.unit.projects.test_project_service import create, ctx
 
@@ -118,11 +118,28 @@ async def test_native_project_session_retains_company_ownership(tmp_path, monkey
     await admin_reader.load()
     with pytest.raises(PermissionDeniedError):
         await admin_reader.add_message_async("user", [TextPart(text="impersonate")])
+    own_session = Session(fs, ctx=bob, session_id="bob-work")
+    await own_session.ensure_exists()
+    await own_session.add_message_async("user", [TextPart(text="pending work")])
     project = await store.get("acme", "orders")
     project["status"] = "archived"
     await store.save("acme", project)
-    with pytest.raises(PermissionDeniedError):
+    with pytest.raises(ConflictError, match="archived"):
         await fs.rm(session.uri, recursive=True, ctx=admin)
+    with pytest.raises(ConflictError, match="archived"):
+        await Session(fs, ctx=bob, session_id="new-work").ensure_exists()
+    with pytest.raises(ConflictError, match="archived"):
+        await own_session.add_message_async("user", [TextPart(text="new message")])
+    with pytest.raises(ConflictError, match="archived"):
+        await own_session.commit_async()
+    with pytest.raises(ConflictError, match="archived"):
+        await fs.write_file("viking://project/orders/resources/api.md", "new", ctx=bob)
+    # Unauthorized operations remain permission errors, even on an archive.
+    with pytest.raises(PermissionDeniedError):
+        await admin_reader.add_message_async("user", [TextPart(text="impersonate")])
+    with pytest.raises(PermissionDeniedError):
+        await fs.write_file("viking://project/orders/resources/api.md", "new", ctx=alice)
+    assert "POST /orders" in await fs.read_file(uri, ctx=bob)
     project["status"] = "active"
     await store.save("acme", project)
     await fs.rm(session.uri, recursive=True, ctx=admin)
