@@ -1,3 +1,5 @@
+import { workspaceContext } from "./workspace-stage.mjs";
+import { resolveEffectivePeerId } from "../shared/workspace-peer.mjs";
 /**
  * Persistent OpenViking session helpers for Claude Code hooks.
  *
@@ -60,12 +62,65 @@ export function deriveOvSessionId(ccSessionId, suffix = "") {
  * (from scripts/config.mjs loadConfig()) so the timeout can vary per hook.
  */
 export function makeFetchJSON(cfg, timeoutKey = "timeoutMs") {
-  return makeAgentFetchJSON(cfg, process.cwd(), {
-    defaultTimeoutMs: cfg[timeoutKey] || cfg.timeoutMs || 10000,
-    // Every call on this stack names the peer it wants, so nothing here may put
-    // one on a request that asked for none.
-    getActorPeerId: () => "",
-  }).fetchJSON;
+  const clients = new Map();
+  const boundSessions = new Set();
+  return async (path, init, options) => {
+    const stage = workspaceContext.getStore();
+    const effective = stage?.cfg || cfg;
+    const cwd = stage?.cwd || process.cwd();
+    const key = stage?.binding || "legacy";
+    if (!clients.has(key))
+      clients.set(
+        key,
+        makeAgentFetchJSON(effective, cwd, {
+          defaultTimeoutMs:
+            effective[timeoutKey] || effective.timeoutMs || 10000,
+          getActorPeerId: () =>
+            effective.workspaceProtocol === 2
+              ? resolveEffectivePeerId({ cfg: effective, cwd }).peerId
+              : "",
+        }).fetchJSON,
+      );
+    const client = clients.get(key);
+    const sessionMatch = path.match(
+      /^\/api\/v1\/sessions\/([^/]+)\/messages(?:\/batch)?$/,
+    );
+    if (
+      effective.repositoryId &&
+      sessionMatch &&
+      !boundSessions.has(sessionMatch[1])
+    ) {
+      let body = {};
+      try {
+        body = JSON.parse(init?.body || "{}");
+      } catch {
+        /* server validates body */
+      }
+      const messages = body.messages || [body];
+      const firstUser = messages.find((message) => message.role === "user");
+      const text =
+        typeof firstUser?.content === "string"
+          ? firstUser.content
+          : (firstUser?.parts || [])
+              .filter((part) => part.type === "text")
+              .map((part) => part.text || "")
+              .join(" ");
+      const title = text.replace(/\s+/g, " ").trim().slice(0, 120);
+      const result = await client(
+        `/api/v1/sessions/${sessionMatch[1]}/repository`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            repository_id: effective.repositoryId,
+            title,
+          }),
+        },
+      );
+      if (!result.ok) return result;
+      boundSessions.add(sessionMatch[1]);
+    }
+    return client(path, init, options);
+  };
 }
 
 /**

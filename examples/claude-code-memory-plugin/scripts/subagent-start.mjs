@@ -24,7 +24,7 @@ import { isPluginEnabled, loadConfig } from "./config.mjs";
 import { createLogger } from "./debug-log.mjs";
 import { deriveOvSessionId } from "./lib/ov-session.mjs";
 import { getEffectivePeerId } from "./lib/workspace-peer.mjs";
-import { runHookStage } from "./shared/agent-hook-runtime.mjs";
+import { runHookStage } from "./lib/workspace-stage.mjs";
 
 if (!isPluginEnabled()) {
   process.stdout.write(JSON.stringify({ decision: "approve" }) + "\n");

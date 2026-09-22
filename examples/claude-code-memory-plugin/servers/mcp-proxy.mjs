@@ -17,7 +17,8 @@ import { toMcpProxyConfig } from "../scripts/shared/mcp-proxy-config.mjs";
 import { createOpenVikingMcpProxy } from "../scripts/shared/mcp-proxy-core.mjs";
 
 export function readProxyConfig(env = process.env) {
-  return toMcpProxyConfig(loadConfig(undefined, { env }), { env });
+  env = { ...env, OPENVIKING_WORKSPACE_ROOT: env.OPENVIKING_WORKSPACE_ROOT || process.cwd() };
+  return toMcpProxyConfig(loadConfig(env.OPENVIKING_WORKSPACE_ROOT || process.cwd(), { env }), { env });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolvePath(process.argv[1])) {

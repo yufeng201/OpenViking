@@ -272,7 +272,7 @@ export function buildPluginConfig(harness, {
     userId: user,
     requestTimeoutMs: timeoutMs,
   };
-  if (config.workspaceProtocol === 2 && name !== "codex") {
+  if (config.workspaceProtocol === 2 && !["codex", "claude-code"].includes(name)) {
     config.workspaceError = "Workspace capture requires the Codex integration; this Agent is not yet adapted";
   }
   for (const knob of SEND_ONLY_WHEN_CONFIGURED) {

@@ -20,7 +20,12 @@ export function workspaceTargetSettings(value) {
         throw new Error("project_id and peer configuration are mutually exclusive");
       }
     }
-    return { workspaceProtocol: 2, projectId: project || "", workspaceError: "" };
+    const repository = value.repository_id;
+    if (repository !== undefined) {
+      validateWorkspaceId(repository, "repository_id");
+      if (!project) throw new Error("repository_id requires project_id");
+    }
+    return { workspaceProtocol: 2, projectId: project || "", repositoryId: repository || "", workspaceError: "" };
   } catch (error) {
     return { workspaceProtocol: 2, workspaceError: error.message };
   }

@@ -500,6 +500,8 @@ class SessionMeta:
     created_by_account_id: str = ""
     created_by_user_id: str = ""
     workspace_target: Optional[Dict[str, Any]] = None
+    repository: Optional[Dict[str, str]] = None
+    title: str = ""
     message_count: int = 0
     total_message_count: Optional[int] = 0
     commit_count: int = 0
@@ -558,6 +560,8 @@ class SessionMeta:
             "created_by_account_id": self.created_by_account_id,
             "created_by_user_id": self.created_by_user_id,
             "workspace_target": self.workspace_target,
+            "repository": self.repository,
+            "title": self.title,
             "message_count": self.message_count,
             "commit_count": self.commit_count,
             "memories_extracted": dict(self.memories_extracted),
@@ -604,6 +608,8 @@ class SessionMeta:
             or data.get("account_id", ""),
             created_by_user_id=data.get("created_by_user_id", ""),
             workspace_target=data.get("workspace_target"),
+            repository=data.get("repository"),
+            title=data.get("title", ""),
             message_count=data.get("message_count", 0),
             total_message_count=data.get("total_message_count"),
             commit_count=data.get("commit_count", 0),
@@ -915,6 +921,8 @@ class Session:
     async def update_config(
         self,
         *,
+        repository: Optional[Dict[str, str]] = None,
+        title: str = "",
         event_search_tags: Optional[List[str]] = None,
         auto_commit_policy: Optional[Dict[str, Any]] = None,
         update_auto_commit_policy: bool = False,
@@ -935,6 +943,14 @@ class Session:
             except Exception as exc:
                 if not _is_storage_not_found(exc):
                     raise
+            if repository is not None:
+                from openviking_cli.exceptions import ConflictError
+
+                if self._meta.repository and self._meta.repository["id"] != repository["id"]:
+                    raise ConflictError("Session repository is already bound; start a new session")
+                self._meta.repository = dict(repository)
+            if title and not self._meta.title:
+                self._meta.title = title
             if event_search_tags is not None:
                 self._meta.event_search_tags = list(event_search_tags)
             if update_auto_commit_policy:

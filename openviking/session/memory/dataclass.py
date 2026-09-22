@@ -168,6 +168,7 @@ class MemoryOperationSource(BaseModel):
     task_id: Optional[str] = None
     trace_id: Optional[str] = None
     extracted_at: Optional[str] = None
+    repository: Optional[Dict[str, str]] = None
     contributor_id: Optional[str] = None
     source_message_ids: List[str] = Field(default_factory=list)
 

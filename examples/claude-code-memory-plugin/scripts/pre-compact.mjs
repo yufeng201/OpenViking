@@ -13,7 +13,7 @@
 import { isPluginEnabled, loadConfig } from "./config.mjs";
 import { createLogger } from "./debug-log.mjs";
 import { commitSession, deriveOvSessionId, makeFetchJSON } from "./lib/ov-session.mjs";
-import { runHookStage } from "./shared/agent-hook-runtime.mjs";
+import { runHookStage } from "./lib/workspace-stage.mjs";
 
 if (!isPluginEnabled()) {
   process.stdout.write(JSON.stringify({ decision: "approve" }) + "\n");

@@ -224,6 +224,7 @@ const activity = {
       overviewLevel: 'L1',
       search: 'Search context',
       refresh: 'Refresh tree',
+      unassignedRepository: 'Unassigned repository',
       namespaces: {
         project: 'Shared project resources, sessions and memories',
         agent: 'Agent capabilities, tools, and experience',

@@ -331,8 +331,29 @@ class SessionService:
                 name = entry.get("name", "")
                 if name in [".", ".."]:
                     continue
+                session_meta = {}
+                if (
+                    ctx.workspace_target
+                    and ctx.workspace_target.kind == "project"
+                    and entry.get("isDir")
+                ):
+                    import json
+
+                    from openviking.server.error_mapping import is_not_found_error
+
+                    try:
+                        session_meta = json.loads(
+                            await self._viking_fs.read_file(
+                                f"{session_base_uri}/{name}/.meta.json", ctx=ctx
+                            )
+                        )
+                    except Exception as error:
+                        if not is_not_found_error(error):
+                            raise
                 sessions_by_id[name] = {
                     "session_id": name,
+                    "repository": session_meta.get("repository"),
+                    "title": session_meta.get("title", ""),
                     "uri": f"{session_base_uri}/{name}",
                     "is_dir": entry.get("isDir", False),
                     "mod_time": entry.get("modTime", ""),

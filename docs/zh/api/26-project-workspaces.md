@@ -6,7 +6,7 @@
 
 此功能为实验性增量能力，默认关闭。在 `ov.conf` 的 `server` 中设置 `workspace_capture_enabled: true`。先升级所有 HTTP/MCP 服务、队列消费者、自动提交进程和客户端，再打开开关。混用旧消费者可能丢失工作区语义，不支持滚动降级；关闭前应先停止新写入、处理完工作区队列。现有个人会话和 v1 仓库配置保持原行为，不自动迁移。
 
-当前提供 HTTP 管理、Python SDK 和 Codex Hook/MCP 接入。直接运行旧 `ov` CLI 不会自动应用仓库 v2 目标；项目 Agent 的工具读写请通过已绑定工作区的 MCP，或显式设置目标的 Python SDK/HTTP 请求完成。Studio 项目管理页面和其他 Agent 的会话绑定适配尚未提供。项目不支持 skills 或持续资源 watch；通过普通资源导入上传文档。
+当前提供 HTTP 管理、Python SDK、Studio 项目管理，以及 Codex/Claude Code Hook/MCP 接入。直接运行旧 `ov` CLI 不会自动应用仓库 v2 目标；项目 Agent 的工具读写请通过已绑定工作区的 MCP，或显式设置目标的 Python SDK/HTTP 请求完成。其他 Agent 的 v2 会话绑定适配尚未提供。项目不支持 skills 或持续资源 watch；通过普通资源导入上传文档。
 
 ## 数据布局
 
@@ -130,3 +130,31 @@ await client.close()
 项目采用独立的 architecture、conventions、decisions、experiences 模板，不复用用户画像、个人偏好或 Agent 技能进化。只有 `evidence_status=confirmed` 的抽取建议进入共享记忆。未确认、冲突建议和自动删除建议保存在来源归档的 `memory-candidates.jsonl`，不进入默认召回；管理员可检查后手工维护记忆，当前没有候选审批 UI。
 
 记忆元数据保留服务器生成的项目归属、来源归档、贡献者、来源消息 ID 和抽取时间；合并时保留多个来源。项目 URI、批处理键、队列上下文和向量过滤都包含目标空间，删除贡献者不会按作者清理项目记忆。自动抽取仍有模型判断误差，应通过来源复核关键团队约定。
+
+## Claude Code 接入
+
+安装支持项目模式的 Claude Code 插件（0.6.0 起），并在仓库 `.openviking/config.json` 配置：
+
+```json
+{"version": 2, "project_id": "your-project-id"}
+```
+
+管理员先创建项目并将用户加入绑定的成员组。插件使用该用户的 API Key；项目 ID 本身不授予权限。连接配置保存在本机 `ovcli.conf`，也可用 `OPENVIKING_CLI_CONFIG_FILE` 指向独立配置。不要把 API Key 放到仓库配置里。
+
+从该仓库启动新的 Claude 会话。Hook 按输入的 `cwd` 解析项目，MCP 默认使用启动目录；宿主改变 MCP 的工作目录时，应通过 `OPENVIKING_WORKSPACE_ROOT` 指向同一仓库。
+
+自动召回查询项目记忆和资源；主会话、子 Agent 会话、压缩前提交及结束提交均使用同一项目目标。项目模式不会注入个人画像。会话绑定认证身份和目标，切换项目或身份需要新建 Claude 会话；离线重试队列按身份和目标隔离，权限失败不会回退到个人目录。未配置 v2 时保留原有个人模式。
+
+### Claude Code 仓库分组（0.6.1 起）
+
+项目管理员在项目的 repositories 中登记仓库 ID 后，仓库配置可以增加 `repository_id`：
+
+```json
+{"version": 2, "project_id": "openviking-collab", "repository_id": "openviking"}
+```
+
+Claude 捕获消息前通过 `PUT /api/v1/sessions/{session_id}/repository` 绑定来源仓库，主体为 `{"repository_id":"openviking","title":"接口联调"}`。仅会话作者可绑定；仓库须属于当前项目，首次绑定后不能更换。title 首次非空时保存，插件使用首次用户消息的简短文本作为标题。指定仓库但绑定失败时，不继续发送消息。
+
+Session GET 和列表返回 repository（id、name）与 title。Studio 上下文树按仓库虚拟分组，分组仅用于浏览，不产生新的存储 URI 或权限边界。旧会话保留未关联状态，可以由作者补充归属。实际 URI 保持 `viking://project/{id}/sessions/{session_id}`，归档和来源链接不变。
+
+抽取读取已保存的来源仓库，为项目模板补充范围说明；正式记忆 sources 内保留 repository。来源仓库不等于知识的唯一适用仓库，跨仓库契约仍可共享。当前不自动匹配 Git remote，不新增分支/commit 和工作项字段。配置仓库后请新建 Claude 会话。

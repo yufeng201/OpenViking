@@ -312,7 +312,7 @@ async function resolveTargetUri(fetchJSON, targetUri, actorPeerId = "") {
 async function searchOneSource(fetchJSON, cfg, query, source, limit, options) {
   const actorPeerId = options.actorPeerId || "";
   const home = await resolveTargetUri(fetchJSON, source.uri, actorPeerId);
-  const targets = [...new Set(cfg.user
+  const targets = cfg.projectId ? [source.uri] : [...new Set(cfg.user
     ? [`viking://user/${cfg.user}/${source.bucket}`, home] : [home])];
   const sessionId = String(options.sessionId || "").trim();
   const search = async (target, session) => {
@@ -347,12 +347,16 @@ async function searchOneSource(fetchJSON, cfg, query, source, limit, options) {
 }
 
 async function searchAllSources(fetchJSON, cfg, query, perSourceLimit, options, log = () => {}) {
+  const sources = cfg.projectId ? [
+    {type: "memory", uri: `viking://project/${cfg.projectId}/memories`, bucket: "memories"},
+    {type: "resource", uri: `viking://project/${cfg.projectId}/resources`, bucket: "resources"},
+  ] : SOURCES;
   const results = await Promise.all(
-    SOURCES.map((src) => searchOneSource(fetchJSON, cfg, query, src, perSourceLimit, options)),
+    sources.map((src) => searchOneSource(fetchJSON, cfg, query, src, perSourceLimit, options)),
   );
   const all = results.flat();
   log("recall_search_summary", {
-    counts: SOURCES.map((src, i) => ({ type: src.type, uri: src.uri, count: results[i].length })),
+    counts: sources.map((src, i) => ({ type: src.type, uri: src.uri, count: results[i].length })),
     total: all.length,
   });
   return all;

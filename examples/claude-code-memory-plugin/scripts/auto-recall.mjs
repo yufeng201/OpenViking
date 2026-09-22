@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { workspaceContext } from "./lib/workspace-stage.mjs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 
 /**
  * Auto-Recall Hook Script for Claude Code (UserPromptSubmit).
@@ -15,7 +18,7 @@ import { deriveOvSessionId, makeFetchJSON } from "./lib/ov-session.mjs";
 import { writeJsonState } from "./lib/state.mjs";
 import { createHostCompressor } from "./lib/host-compressor.mjs";
 import { getEffectivePeerId } from "./lib/workspace-peer.mjs";
-import { runHookStage } from "./shared/agent-hook-runtime.mjs";
+import { runHookStage } from "./lib/workspace-stage.mjs";
 import { buildRecallBlockDetailed } from "./shared/recall-core.mjs";
 import { applyInputFilters, compileInputFilters } from "./shared/input-filters.mjs";
 
@@ -43,6 +46,7 @@ const URI_RE = /viking:\/\/[^\s<>"')\]]+/g;
 async function recall(cfg, query, peer, sessionId) {
   const runCompressor = await createHostCompressor(cfg, log);
   return buildRecallBlockDetailed(fetchJSON, cfg, query, {
+    digestCachePath: cfg.workspaceProtocol === 2 ? join(homedir(), ".openviking", `cc-recall-${workspaceContext.getStore().binding}.json`) : undefined,
     actorPeerId: peer.peerId,
     legacyPeerId: peer.legacyPeerId,
     sessionId,

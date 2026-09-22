@@ -35,7 +35,7 @@ import { replayPending } from "./lib/pending-queue.mjs";
 import { buildProfileBlock, estimateTokens } from "./lib/profile-inject.mjs";
 import { writeJsonState } from "./lib/state.mjs";
 import { getEffectivePeerId } from "./lib/workspace-peer.mjs";
-import { runHookStage } from "./shared/agent-hook-runtime.mjs";
+import { runHookStage } from "./lib/workspace-stage.mjs";
 
 if (!isPluginEnabled()) {
   process.stdout.write(JSON.stringify({ decision: "approve" }) + "\n");
@@ -96,7 +96,7 @@ runHookStage({
   const effectivePeer = getEffectivePeerId(cfg, { sessionId, cwd });
   log("start", { source, sessionId, peerSource: effectivePeer.source });
 
-  const willInjectProfile = !cfg.noAutoInject;
+  const willInjectProfile = !cfg.noAutoInject && !cfg.projectId;
   const willInjectArchive = (source === "resume" || source === "compact") && !!sessionId;
 
   const health = await fetchJSON("/health");
@@ -117,14 +117,14 @@ runHookStage({
     logError("pending-replay", err);
   }
 
-  if (!willInjectProfile && !willInjectArchive) {
+  if (!willInjectProfile && !willInjectArchive && !cfg.projectId) {
     log("skip", { reason: "no_injection_planned", source, noAutoInject: cfg.noAutoInject });
     return;
   }
 
   // 1. Profile injection — every source unless explicitly disabled.
   let profile = null;
-  if (!cfg.noAutoInject) {
+  if (willInjectProfile) {
     try {
       profile = await buildProfileBlock(fetchJSON, cfg.profileTokenBudget, effectivePeer.peerId);
     } catch (err) {
@@ -155,6 +155,7 @@ runHookStage({
 
   // Compose. If both halves are empty, return without injecting.
   const sections = [];
+  if (cfg.projectId) sections.push(`Project memory workspace: ${cfg.projectId}. Resources, sessions and extracted memories are shared with project members.`);
   if (profile?.block) sections.push(profile.block);
   if (archiveSection) sections.push(archiveSection);
 

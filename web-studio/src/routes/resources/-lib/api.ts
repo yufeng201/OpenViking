@@ -1,6 +1,7 @@
 import { listProjects, projectDirectory } from '#/lib/projects'
 import { fetchFind, fetchFindAllTypes, fetchSearch } from '#/lib/retrieval'
 import {
+  ovClient,
   getContentRead,
   getContentAbstract,
   getContentOverview,
@@ -68,6 +69,39 @@ export async function fetchFsList(
               (project.description ? ` · ${project.description}` : ''),
           ),
         ),
+      }
+    }
+    const projectSessions = normalizedUri.match(
+      /^viking:\/\/project\/([^/]+)\/sessions\/$/,
+    )
+    if (projectSessions && !options.recursive) {
+      const sessions = await getOvResult<
+        Array<{
+          session_id: string
+          uri: string
+          title?: string
+          repository?: { id: string; name: string } | null
+          mod_time?: string
+        }>
+      >(
+        ovClient.instance.request({
+          baseURL: ovClient.getOptions().baseUrl,
+          url: '/api/v1/sessions',
+          method: 'GET',
+          headers: { 'X-OpenViking-Project': projectSessions[1] },
+        }),
+      )
+      return {
+        uri: normalizedUri,
+        entries: sessions.map((session) => ({
+          ...projectDirectory(
+            session.uri + '/',
+            session.title || session.session_id,
+            session.session_id,
+          ),
+          repository: session.repository,
+          modTime: session.mod_time || '',
+        })),
       }
     }
     const result = await getOvResult<FSListResult>(

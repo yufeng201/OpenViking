@@ -215,6 +215,7 @@ const activity = {
       overviewLevel: 'L1',
       search: '搜索上下文',
       refresh: '刷新上下文树',
+      unassignedRepository: '未关联仓库',
       namespaces: {
         project: '团队共享的资源、会话和记忆',
         agent: 'Agent 的能力、工具和经验',

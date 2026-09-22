@@ -1513,6 +1513,7 @@ def memory_operation_source_from_request(
         task_id=_optional_str(metadata.get("task_id")),
         trace_id=_optional_str(metadata.get("trace_id")),
         extracted_at=_optional_str(metadata.get("extracted_at")),
+        repository=metadata.get("repository"),
         contributor_id=request.ctx.user.user_id if request.ctx else None,
         source_message_ids=[message.id for message in request.messages if message.id],
     )

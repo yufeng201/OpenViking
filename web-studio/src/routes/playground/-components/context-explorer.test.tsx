@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { VikingFsEntry } from '#/routes/resources/-types/viking-fm'
 
-import { ContextTree } from './context-explorer'
+import { ContextTree, ContextTreeNode } from './context-explorer'
 
 const { useVikingFsListMock } = vi.hoisted(() => ({
   useVikingFsListMock: vi.fn(),
@@ -188,4 +188,45 @@ describe('ContextTree keyboard semantics', () => {
     expect(onSelectFile).toHaveBeenCalledWith(file)
     expect(onExpandedKeysChange).not.toHaveBeenCalled()
   })
+})
+
+it('groups project sessions without navigating to a synthetic directory', async () => {
+  const root = {
+    ...directory,
+    uri: 'viking://project/orders/sessions/',
+    name: 'sessions',
+  }
+  const session = {
+    ...directory,
+    uri: root.uri + 'cc-one/',
+    name: 'Order API',
+    repository: { id: 'api', name: 'Backend' },
+  }
+  useVikingFsListMock.mockImplementation((uri: string) => ({
+    data: { entries: uri === root.uri ? [session] : [] },
+    isLoading: false,
+    isError: false,
+  }))
+  const select = vi.fn()
+  const expand = vi.fn()
+  const props = {
+    entry: root,
+    currentUri: root.uri,
+    expandedKeys: new Set([root.uri]),
+    level: 0,
+    onExpandedKeysChange: expand,
+    onSelectDirectory: select,
+    onSelectFile: vi.fn(),
+  }
+  render(
+    <ul>
+      <ContextTreeNode {...props} />
+    </ul>,
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'Backend' }))
+  expect(select).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: 'Order API' }))
+  expect(select).toHaveBeenCalledWith(
+    expect.objectContaining({ uri: session.uri }),
+  )
 })

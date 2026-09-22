@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -269,7 +269,19 @@ export function ContextTreeNode({
   selectedFileUri?: string | null
 }) {
   const { t } = useTranslation('playground')
-  const isOpen = expandedKeys.has(entry.uri)
+  const isVirtual = entry.virtualChildren !== undefined
+  const containsSelection = Boolean(
+    entry.virtualChildren?.some(
+      (child) =>
+        currentUri.startsWith(child.uri) ||
+        selectedFileUri?.startsWith(child.uri),
+    ),
+  )
+  const [virtualOpen, setVirtualOpen] = useState(containsSelection)
+  useEffect(() => {
+    if (containsSelection) setVirtualOpen(true)
+  }, [containsSelection])
+  const isOpen = isVirtual ? virtualOpen : expandedKeys.has(entry.uri)
   const isFileSelected = !entry.isDir && selectedFileUri === entry.uri
   const isDirSelected =
     entry.isDir && currentUri === entry.uri && !selectedFileUri
@@ -281,7 +293,7 @@ export function ContextTreeNode({
         name: entry.name,
       })
     : ''
-  const shouldLoadChildren = entry.isDir && isOpen
+  const shouldLoadChildren = entry.isDir && isOpen && !isVirtual
   const listQuery = useVikingFsList(
     entry.uri,
     {
@@ -291,10 +303,29 @@ export function ContextTreeNode({
     },
     shouldLoadChildren,
   )
-  const children = useMemo(
-    () => sortTreeEntries(visibleContextEntries(listQuery.data?.entries ?? [])),
-    [listQuery.data?.entries],
-  )
+  const children = useMemo(() => {
+    const entries = sortTreeEntries(
+      visibleContextEntries(
+        entry.virtualChildren ?? listQuery.data?.entries ?? [],
+      ),
+    )
+    if (!/^viking:\/\/project\/[^/]+\/sessions\/?$/.test(entry.uri))
+      return entries
+    const groups = new Map<string, VikingFsEntry>()
+    for (const child of entries) {
+      const id = child.repository?.id || ''
+      if (!groups.has(id))
+        groups.set(id, {
+          ...entry,
+          uri: `${entry.uri}#repository=${encodeURIComponent(id)}`,
+          name: child.repository?.name || t('explorer.unassignedRepository'),
+          abstract: '',
+          virtualChildren: [],
+        })
+      groups.get(id)!.virtualChildren!.push(child)
+    }
+    return [...groups.values()]
+  }, [entry, listQuery.data?.entries, t])
 
   useEffect(() => {
     if (!isSelected) return
@@ -309,13 +340,28 @@ export function ContextTreeNode({
 
   const toggle = useCallback(() => {
     if (!entry.isDir) return
+    if (isVirtual) {
+      setVirtualOpen((open) => !open)
+      return
+    }
     const next = new Set(expandedKeys)
     if (isOpen) next.delete(entry.uri)
     else next.add(entry.uri)
     onExpandedKeysChange(next)
-  }, [entry.isDir, entry.uri, expandedKeys, isOpen, onExpandedKeysChange])
+  }, [
+    entry.isDir,
+    entry.uri,
+    expandedKeys,
+    isOpen,
+    isVirtual,
+    onExpandedKeysChange,
+  ])
 
   const select = useCallback(() => {
+    if (isVirtual) {
+      toggle()
+      return
+    }
     if (entry.isDir) {
       onSelectDirectory(entry)
       if (!isOpen || isSelected) {
@@ -324,7 +370,15 @@ export function ContextTreeNode({
     } else {
       onSelectFile(entry)
     }
-  }, [entry, isOpen, isSelected, onSelectDirectory, onSelectFile, toggle])
+  }, [
+    entry,
+    isOpen,
+    isSelected,
+    isVirtual,
+    onSelectDirectory,
+    onSelectFile,
+    toggle,
+  ])
 
   return (
     <li className="relative min-w-0 list-none">
@@ -408,7 +462,7 @@ export function ContextTreeNode({
       </div>
 
       {entry.isDir && isOpen ? (
-        listQuery.isLoading ? (
+        !isVirtual && listQuery.isLoading ? (
           <div
             className="relative flex h-7 items-center gap-2 px-1.5 text-xs text-muted-foreground"
             style={{ paddingLeft: treeChildContentPadding(level) }}

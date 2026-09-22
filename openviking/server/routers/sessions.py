@@ -16,12 +16,14 @@ from openviking.server.dependencies import get_service
 from openviking.server.identity import RequestContext
 from openviking.server.models import Response
 from openviking.server.responses import error_response
+from openviking.server.routers.session_repository import router as repository_router
 from openviking.server.telemetry import run_operation
 from openviking.telemetry import TelemetryRequest
 from openviking.utils.image_search import is_viking_uri
 from openviking_cli.utils import get_logger
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
+router.include_router(repository_router)
 logger = get_logger(__name__)
 
 

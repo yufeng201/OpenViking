@@ -13,6 +13,7 @@ def add_project_source(metadata, operation, ctx):
             raise ValueError("Project memory source is outside the workspace")
         reference = {
             "archive_uri": source.archive_uri,
+            "repository": source.repository,
             "session_id": source.session_id,
             "contributor_id": source.contributor_id,
             "message_ids": source.source_message_ids,

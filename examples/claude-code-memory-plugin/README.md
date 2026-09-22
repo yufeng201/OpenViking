@@ -527,3 +527,17 @@ claude-code-memory-plugin/
 ## License
 
 Apache-2.0 — same as [OpenViking](https://github.com/volcengine/OpenViking).
+
+## Shared project workspaces (0.6.0+)
+
+Ask an administrator to create the project and add your user to its member group. Authenticate with your own API key in `ovcli.conf` (or a private file selected by `OPENVIKING_CLI_CONFIG_FILE`), then add this credential-free repository configuration:
+
+```json
+{"version": 2, "project_id": "your-project-id"}
+```
+
+Save it as `.openviking/config.json` and start a new Claude Code session from that repository. If the host launches MCP elsewhere, set `OPENVIKING_WORKSPACE_ROOT` to the repository root. Both hooks and MCP require a server advertising workspace protocol v2.
+
+Recall searches project memories and resources. Main and subagent sessions, capture, compaction and final commits belong to the project. Personal profiles are not injected. A conversation is pinned to its identity and workspace: changing either requires a new conversation. Offline writes use separate queues per identity and workspace. Missing permissions never fall back to personal storage. Without v2 configuration, existing personal behavior remains available.
+
+For repository grouping with Claude Code 0.6.1+, add `repository_id` alongside `project_id`. The ID must already be registered in the project. The plugin binds each new session before its first message, using the first user text as a short title. Binding failures stop capture, and changing the repository requires a new conversation. Session URIs and project-wide member access remain unchanged. Studio groups these sessions by repository; extraction records the source repository without treating it as a separate permissions boundary.

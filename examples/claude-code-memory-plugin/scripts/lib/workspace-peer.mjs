@@ -12,6 +12,7 @@ function stateName(sessionId) {
 }
 
 export function getEffectivePeerId(cfg, { sessionId = "", cwd = "" } = {}) {
+  if (cfg.workspaceProtocol === 2) return resolveEffectivePeerId({ cfg, cwd });
   if (!sessionId) return resolveEffectivePeerId({ cfg, cwd });
 
   const name = stateName(sessionId);

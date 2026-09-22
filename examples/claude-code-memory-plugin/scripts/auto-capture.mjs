@@ -36,7 +36,7 @@ import {
 import { maybeDetach, readHookStdin } from "./lib/async-writer.mjs";
 import { readJsonState, writeJsonState } from "./lib/state.mjs";
 import { getEffectivePeerId } from "./lib/workspace-peer.mjs";
-import { runHookStage } from "./shared/agent-hook-runtime.mjs";
+import { runHookStage } from "./lib/workspace-stage.mjs";
 import { sendSessionMessages } from "./shared/batch-send.mjs";
 import { filterCaptureParts } from "./shared/capture-utils.mjs";
 

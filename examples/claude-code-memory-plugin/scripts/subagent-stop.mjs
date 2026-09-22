@@ -31,7 +31,7 @@ import {
 } from "./lib/ov-session.mjs";
 import { maybeDetach, readHookStdin } from "./lib/async-writer.mjs";
 import { getEffectivePeerId } from "./lib/workspace-peer.mjs";
-import { runHookStage } from "./shared/agent-hook-runtime.mjs";
+import { runHookStage } from "./lib/workspace-stage.mjs";
 import { sendSessionMessages } from "./shared/batch-send.mjs";
 import { filterCaptureParts } from "./shared/capture-utils.mjs";
 
@@ -159,6 +159,7 @@ async function main() {
     // Prefer state from SubagentStart (may carry ovSessionId from config snapshot);
     // fall back to live derivation if state file is missing.
     const state = await loadState(subagentId);
+    if (state && state.parentSessionId !== sessionId) throw new Error("Subagent belongs to another Claude session");
     const ovSessionId = state?.ovSessionId || deriveOvSessionId(sessionId, `subagent:${subagentId}`);
 
     let transcript;

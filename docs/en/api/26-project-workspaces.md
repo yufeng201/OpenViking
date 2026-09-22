@@ -2,7 +2,7 @@
 
 Projects own resources, sessions and shared memory independently of individual contributors. Authenticate using each user's API key. An account administrator binds an existing group to a project; group membership is authoritative. Removing a contributor does not remove project assets.
 
-Enable experimental `server.workspace_capture_enabled` only after upgrading every HTTP/MCP server, queue consumer and client. It defaults to false. Legacy personal requests remain unchanged. Drain workspace jobs before downgrading. This version supports HTTP administration, the Python SDK and Codex hooks/MCP; Studio management and other Agent session bindings are not yet included. Skills and recurring resource watches are unsupported in workspaces. The existing `ov` CLI does not automatically apply repository v2 targets; use workspace-bound MCP, the scoped Python SDK, or HTTP target headers for project operations.
+Enable experimental `server.workspace_capture_enabled` only after upgrading every HTTP/MCP server, queue consumer and client. It defaults to false. Legacy personal requests remain unchanged. Drain workspace jobs before downgrading. This version supports HTTP administration, the Python SDK, Studio project management and Codex/Claude Code hooks/MCP; other Agent v2 session bindings are not yet included. Skills and recurring resource watches are unsupported in workspaces. The existing `ov` CLI does not automatically apply repository v2 targets; use workspace-bound MCP, the scoped Python SDK, or HTTP target headers for project operations.
 
 ## Ownership and authorization
 
@@ -65,3 +65,9 @@ The Python SDK adds immutable `project_id` and `workspace_peer_id` constructor o
 Project memory has four schemas: architecture, conventions, decisions and experiences. It excludes personal profiles/preferences and skill evolution. Only confirmed proposals become searchable memory; uncertain/conflicting proposals and automatic deletes go into the source archive's `memory-candidates.jsonl`. Candidate approval has no UI yet. Server-owned provenance records source archives, contributor IDs, message IDs and timestamps; merging retains multiple sources. Model confirmation is not a guarantee of factual correctness—review source evidence for critical conventions.
 
 See the [Chinese reference](../../zh/api/26-project-workspaces.md) for full configuration examples.
+
+## Claude Code
+
+Plugin 0.6.0+ supports repository `.openviking/config.json` with `{"version":2,"project_id":"your-project-id"}`. Authenticate with a member's own API key in a private `ovcli.conf`; `OPENVIKING_CLI_CONFIG_FILE` can select a separate connection file. Start a new Claude conversation from the repository. If MCP starts elsewhere, set `OPENVIKING_WORKSPACE_ROOT` to that same repository.
+
+Recall, main/subagent capture, compaction and final commits share the project target. Project mode does not inject personal profiles. Conversations are pinned to identity and target, and offline queues are isolated by that binding. Changing either requires a new conversation; denied access never falls back to personal storage. Without v2 configuration the existing personal mode remains available.

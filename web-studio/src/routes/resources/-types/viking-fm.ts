@@ -1,11 +1,5 @@
 export type VikingFileType =
-  | 'directory'
-  | 'image'
-  | 'markdown'
-  | 'jsonl'
-  | 'code'
-  | 'text'
-  | 'binary'
+  'directory' | 'image' | 'markdown' | 'jsonl' | 'code' | 'text' | 'binary'
 
 export interface VikingFsEntry {
   uri: string
@@ -16,6 +10,8 @@ export interface VikingFsEntry {
   modTime: string
   modTimestamp: number | null
   abstract: string
+  repository?: { id: string; name: string } | null
+  virtualChildren?: VikingFsEntry[]
   overview?: string
 }
 

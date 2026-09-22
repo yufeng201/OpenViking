@@ -700,6 +700,9 @@ class SessionCompressorV3:
             registry = await resolve_account_memory_registry(
                 viking_fs, ctx.account_id, get_default_registry()
             )
+        from openviking.session.memory.repository_context import apply_repository_context
+
+        repository = await apply_repository_context(viking_fs, ctx, session_id, registry)
         if allow_self_memory:
             await registry.initialize_memory_files(
                 ctx,
@@ -774,6 +777,7 @@ class SessionCompressorV3:
                     "peer_memory_enabled": peer_memory_enabled,
                 },
                 metadata={
+                    "repository": repository,
                     "source_extraction_id": extraction_id,
                     "session_id": session_id,
                     "archive_uri": archive_uri,

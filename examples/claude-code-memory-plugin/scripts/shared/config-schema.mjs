@@ -39,6 +39,7 @@ export const CAPABILITIES = ["connection", "peer", "recall", "capture", "session
 /** @type {ReadonlyArray<object>} */
 export const KNOBS = [
   { name: "workspaceProtocol", type: "int", default: 1, min: 1, max: 2, capability: "peer" },
+  { name: "repositoryId", type: "string", default: "", capability: "peer" },
   { name: "projectId", type: "string", default: "", capability: "peer" },
   { name: "workspaceError", type: "string", default: "", capability: "peer" },
   // ── connection and identity ────────────────────────────────────────────
