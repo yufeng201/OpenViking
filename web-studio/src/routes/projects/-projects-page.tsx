@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { FolderCogIcon, SearchIcon, PlusIcon } from 'lucide-react'
+import {
+  FolderCogIcon,
+  SearchIcon,
+  PlusIcon,
+  FolderIcon,
+  ArrowUpRightIcon,
+  UsersIcon,
+  Settings2Icon,
+  CodeIcon,
+} from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { copyTextToClipboard } from '#/lib/clipboard'
 import { getOvResult, ovClient } from '#/lib/ov-client'
@@ -92,14 +101,13 @@ function ProjectManagerContent() {
     }
   }
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-6 p-4 md:p-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <main className="flex w-full min-w-0 flex-col gap-5">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <FolderCogIcon className="size-6" />
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t('projects.title')}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
             {t('projects.hint')}
           </p>
         </div>
@@ -110,11 +118,12 @@ function ProjectManagerContent() {
           </Button>
         )}
       </header>
-      <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="rounded-xl border bg-card p-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <SearchIcon className="size-4 text-muted-foreground" />
+      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[272px_minmax(0,1fr)]">
+        <aside className="min-w-0 space-y-3 rounded-xl border border-border/70 bg-card/50 p-3">
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              className="bg-background/60 pl-9"
               aria-label={t('projects.search')}
               placeholder={t('projects.search')}
               value={search}
@@ -136,18 +145,28 @@ function ProjectManagerContent() {
               )
               .map((project) => (
                 <Button
-                  className="h-auto justify-start whitespace-normal py-3 text-left"
+                  className={`h-auto min-h-20 w-full justify-start gap-3 whitespace-normal border px-3 py-3 text-left shadow-none transition-colors ${selected === project.project_id ? 'border-primary/20 bg-primary/5 hover:bg-primary/10' : 'border-transparent hover:border-border/60 hover:bg-muted/60'}`}
+                  aria-pressed={selected === project.project_id}
                   disabled={busy}
                   key={project.project_id}
-                  variant={
-                    selected === project.project_id ? 'secondary' : 'outline'
-                  }
+                  variant="ghost"
                   onClick={() => select(project)}
                 >
-                  <span className="min-w-0">
-                    <span className="block font-medium">{project.name}</span>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background/60 text-muted-foreground">
+                    <FolderIcon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">
+                      {project.name}
+                    </span>
                     <span className="mt-1 block break-all text-xs text-muted-foreground">
-                      {project.project_id} · {t(`projects.${project.status}`)}
+                      <span className="font-mono">{project.project_id}</span>
+                      <span className="mt-1.5 flex items-center gap-1.5">
+                        <span
+                          className={`size-1.5 rounded-full ${project.status === 'active' ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`}
+                        />
+                        {t(`projects.${project.status}`)}
+                      </span>
                     </span>
                   </span>
                 </Button>
@@ -165,7 +184,7 @@ function ProjectManagerContent() {
               )}
           </div>
         </aside>
-        <section className="min-w-0 space-y-5 rounded-xl border bg-card p-5 md:p-6">
+        <section className="min-w-0 space-y-6 rounded-xl border border-border/70 bg-card/50 p-5 md:p-6">
           {!creating && !current && (
             <div className="py-16 text-center text-muted-foreground">
               <FolderCogIcon className="mx-auto mb-4 size-10 opacity-40" />
@@ -180,25 +199,34 @@ function ProjectManagerContent() {
                     {current?.name ?? t('projects.create')}
                   </h2>
                   {current && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {current.project_id} · {t(`projects.${current.status}`)}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <code className="rounded-md bg-muted/60 px-2 py-1 text-muted-foreground">
+                        {current.project_id}
+                      </code>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ${current.status === 'active' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}
+                      >
+                        <span className="size-1.5 rounded-full bg-current" />
+                        {t(`projects.${current.status}`)}
+                      </span>
+                    </div>
                   )}
                 </div>
                 {current && (
                   <Link
-                    className="text-sm text-primary underline underline-offset-4"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-background/50 px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     to="/playground"
                     search={{ uri: `viking://project/${selected}/` }}
                   >
                     {t('projects.browse')}
+                    <ArrowUpRightIcon className="size-4 text-muted-foreground" />
                   </Link>
                 )}
               </div>
               {current && (
                 <nav
                   aria-label={t('projects.sections')}
-                  className="flex flex-wrap gap-2 border-b pb-3"
+                  className="flex flex-wrap gap-5 border-b border-border/70"
                 >
                   {[
                     'details',
@@ -207,9 +235,18 @@ function ProjectManagerContent() {
                   ].map((value) => (
                     <Button
                       key={value}
-                      variant={tab === value ? 'secondary' : 'ghost'}
+                      variant="ghost"
+                      aria-pressed={tab === value}
+                      className={`-mb-px h-11 rounded-none border-b-2 px-0 hover:bg-transparent ${tab === value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                       onClick={() => setTab(value)}
                     >
+                      {value === 'details' ? (
+                        <Settings2Icon className="size-4" />
+                      ) : value === 'members' ? (
+                        <UsersIcon className="size-4" />
+                      ) : (
+                        <CodeIcon className="size-4" />
+                      )}
                       {t(`projects.${value}`)}
                     </Button>
                   ))}
@@ -224,7 +261,7 @@ function ProjectManagerContent() {
           )}
           {(creating || current) && tab === 'details' && (
             <form
-              className="space-y-3"
+              className="grid gap-5 sm:grid-cols-2"
               onSubmit={(event) => {
                 event.preventDefault()
                 void run(async () => {
@@ -247,7 +284,7 @@ function ProjectManagerContent() {
                 })
               }}
             >
-              <label className="block space-y-1 text-sm">
+              <label className="block min-w-0 space-y-2 text-sm">
                 <span>{t('projects.id')}</span>
                 <Input
                   value={id}
@@ -258,7 +295,7 @@ function ProjectManagerContent() {
                   maxLength={128}
                 />
               </label>
-              <label className="block space-y-1 text-sm">
+              <label className="block min-w-0 space-y-2 text-sm">
                 <span>{t('projects.name')}</span>
                 <Input
                   value={name}
@@ -267,16 +304,17 @@ function ProjectManagerContent() {
                   required
                 />
               </label>
-              <label className="block space-y-1 text-sm">
+              <label className="block min-w-0 space-y-2 text-sm sm:col-span-2">
                 <span>{t('projects.description')}</span>
-                <Input
+                <textarea
+                  className="min-h-24 w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   disabled={!canManage}
                 />
               </label>
               {canManage && (
-                <label className="block space-y-1 text-sm">
+                <label className="block min-w-0 space-y-2 text-sm sm:col-span-2">
                   <span>{t('projects.group')}</span>
                   <select
                     className="h-9 w-full rounded-md border bg-background px-3"
@@ -296,13 +334,13 @@ function ProjectManagerContent() {
                       </option>
                     ))}
                   </select>
-                  <span className="text-muted-foreground">
+                  <span className="block text-xs leading-5 text-muted-foreground">
                     {t('projects.groupHint')}
                   </span>
                 </label>
               )}
               {canManage && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 border-t border-border/60 pt-5 sm:col-span-2">
                   <Button type="submit" disabled={busy}>
                     {t('projects.save')}
                   </Button>
@@ -338,7 +376,7 @@ function ProjectManagerContent() {
             </form>
           )}
           {selected && canManage && tab === 'members' && (
-            <section className="space-y-2 border-t pt-3">
+            <section className="space-y-4">
               <h3 className="text-sm font-semibold">{t('projects.members')}</h3>
               <p className="text-xs text-muted-foreground">
                 {t('projects.memberHint')}
@@ -349,8 +387,16 @@ function ProjectManagerContent() {
                 </p>
               )}
               {members.data?.map((user) => (
-                <div key={user} className="flex items-center justify-between">
-                  <span className="text-sm">{user}</span>
+                <div
+                  key={user}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/30 px-4 py-3"
+                >
+                  <span className="flex min-w-0 items-center gap-3 text-sm">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted font-medium text-muted-foreground">
+                      {user.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="truncate">{user}</span>
+                  </span>
                   <Button
                     variant="ghost"
                     disabled={busy}
