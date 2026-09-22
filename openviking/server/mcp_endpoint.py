@@ -64,11 +64,13 @@ from openviking.server.local_input_guard import (
     is_remote_resource_source,
 )
 from openviking.server.resource_ingest import ingest_temp_upload
+from openviking.server.routers.search import context_only_fields_error
 from openviking.server.temp_upload_store import TempUploadStore
 from openviking.server.upload_token_store import upload_token_store
 from openviking.utils.media_limits import MAX_INLINE_TOOL_RESULT_MEDIA_BYTES
 from openviking.utils.search_filters import SearchContextTypeInput, merge_search_filter
 from openviking_cli.exceptions import (
+    FailedPreconditionError,
     InvalidArgumentError,
     NotFoundError,
     OpenVikingError,
@@ -76,7 +78,6 @@ from openviking_cli.exceptions import (
     UnauthenticatedError,
 )
 from openviking_cli.utils import get_logger
-from openviking.server.routers.search import context_only_fields_error
 
 logger = get_logger(__name__)
 
@@ -186,11 +187,28 @@ class _IdentityASGIMiddleware:
                 actor_peer_id=actor_peer_id,
                 api_key=_extract_api_key(x_api_key, authorization),
             )
-        except (UnauthenticatedError, PermissionDeniedError, InvalidArgumentError) as exc:
+            from openviking.server.workspace_context import resolve_workspace_context
+
+            ctx = await resolve_workspace_context(request, ctx)
+        except (
+            UnauthenticatedError,
+            PermissionDeniedError,
+            InvalidArgumentError,
+            FailedPreconditionError,
+            NotFoundError,
+        ) as exc:
             status = (
                 401
                 if isinstance(exc, UnauthenticatedError)
-                else (403 if isinstance(exc, PermissionDeniedError) else 400)
+                else (
+                    403
+                    if isinstance(exc, PermissionDeniedError)
+                    else 404
+                    if isinstance(exc, NotFoundError)
+                    else 409
+                    if isinstance(exc, FailedPreconditionError)
+                    else 400
+                )
             )
             headers: dict[str, str] = {}
             # When OAuth is enabled and the request is unauthenticated, advertise

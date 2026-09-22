@@ -107,7 +107,35 @@ def _owner_from_payload(payload: Mapping[str, Any]) -> tuple[str, str]:
     if isinstance(context_data, dict):
         account_id = account_id or context_data.get("account_id")
         user_id = user_id or context_data.get("owner_user_id")
-    return str(account_id or ""), str(user_id or "")
+    # Queue task ownership is independent of the authenticated contributor.
+    owner = payload.get("_task_owner_id")
+    uri = (
+        payload.get("root_uri")
+        or payload.get("session_uri")
+        or payload.get("target_uri")
+        or payload.get("uri")
+        or (context_data.get("uri") if isinstance(context_data, dict) else "")
+        or ""
+    )
+    if (
+        not owner
+        and user_id
+        and (
+            payload.get("workspace_target")
+            or uri.startswith(("viking://project/", "viking://user/"))
+        )
+    ):
+        from openviking.core.workspace import WorkspaceTarget, context_for_owned_uri, task_owner_key
+        from openviking.server.identity import RequestContext, Role
+        from openviking_cli.session.user_id import UserIdentifier
+
+        ctx = RequestContext(UserIdentifier(str(account_id or ""), str(user_id)), Role.USER)
+        if payload.get("workspace_target"):
+            ctx.workspace_target = WorkspaceTarget.from_dict(payload["workspace_target"])
+        else:
+            ctx = context_for_owned_uri(ctx, uri)
+        owner = task_owner_key(ctx)
+    return str(account_id or ""), str(owner or user_id or "")
 
 
 def prepare_task_payload(
@@ -124,14 +152,17 @@ def prepare_task_payload(
     account_id, user_id = _owner_from_payload(payload)
     if current is not None and current.task_id == task_id:
         account_id = account_id or current.account_id
-        user_id = user_id or current.user_id
+        user_id = current.user_id or user_id
 
     work_id = str(payload.get(TASK_WORK_ID_FIELD) or uuid4())
     payload["task_id"] = task_id
     payload[TASK_WORK_ID_FIELD] = work_id
     if account_id and user_id:
         payload.setdefault("account_id", account_id)
-        payload.setdefault("user_id", user_id)
+        payload["_task_owner_id"] = user_id
+        # Preserve the contributor in existing payloads (including nested user).
+        if not payload.get("user_id") and not isinstance(payload.get("user"), dict):
+            payload.setdefault("user_id", user_id)
     return payload, QueueTaskMetadata(task_id, work_id, account_id, user_id)
 
 

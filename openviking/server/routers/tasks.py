@@ -11,6 +11,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
+from openviking.core.workspace import task_owner_key
 from openviking.server.auth import get_request_context
 from openviking.server.identity import RequestContext, Role
 from openviking.server.models import Response
@@ -33,10 +34,12 @@ async def get_task(
 ):
     """Get the status of a single background task."""
     tracker = get_task_tracker()
-    if _ctx.role == Role.ROOT:
+    if _ctx.role == Role.ROOT and _ctx.workspace_target is None:
         task = await tracker.get(task_id)
         if task is None:
-            task = await tracker.get(task_id, account_id=_ctx.account_id, user_id=_ctx.user.user_id)
+            task = await tracker.get(
+                task_id, account_id=_ctx.account_id, user_id=task_owner_key(_ctx)
+            )
         if task is None:
             task = await tracker.get(
                 task_id,
@@ -47,7 +50,7 @@ async def get_task(
         task = await tracker.get(
             task_id,
             account_id=_ctx.account_id,
-            user_id=_ctx.user.user_id,
+            user_id=task_owner_key(_ctx),
         )
     if not task:
         raise OpenVikingError(
@@ -66,12 +69,18 @@ async def cancel_task(
     """Request cooperative cancellation of a background task."""
     if _ctx.role == Role.ROOT:
         raise PermissionDeniedError("ROOT may not cancel tasks")
+    if (
+        _ctx.workspace_target
+        and _ctx.workspace_target.kind == "project"
+        and _ctx.role != Role.ADMIN
+    ):
+        raise PermissionDeniedError("Project task cancellation requires an administrator")
     tracker = get_task_tracker()
     try:
         task = await tracker.cancel(
             task_id,
             account_id=_ctx.account_id,
-            user_id=_ctx.user.user_id,
+            user_id=task_owner_key(_ctx),
         )
     except ValueError as exc:
         raise FailedPreconditionError(str(exc)) from exc
@@ -106,8 +115,16 @@ async def list_tasks(
 
         # ROOT retains the legacy system + cached visibility and its own
         # persisted tasks, including submissions restored after restart.
-        account = SYSTEM_TASK_ACCOUNT_ID if _ctx.role == Role.ROOT else _ctx.account_id
-        user = SYSTEM_TASK_USER_ID if _ctx.role == Role.ROOT else _ctx.user.user_id
+        account = (
+            SYSTEM_TASK_ACCOUNT_ID
+            if (_ctx.role == Role.ROOT and _ctx.workspace_target is None)
+            else _ctx.account_id
+        )
+        user = (
+            SYSTEM_TASK_USER_ID
+            if (_ctx.role == Role.ROOT and _ctx.workspace_target is None)
+            else task_owner_key(_ctx)
+        )
         filters = {
             "task_type": task_type,
             "status": status,
@@ -116,16 +133,16 @@ async def list_tasks(
             "q": q,
         }
         scope = page_scope(
-            account=_ctx.account_id, user=_ctx.user.user_id, role=str(_ctx.role), **filters
+            account=_ctx.account_id, user=task_owner_key(_ctx), role=str(_ctx.role), **filters
         )
         tasks = await tracker.list_page(
             account_id=account,
             user_id=user,
             limit=limit + 1,
             before=decode_cursor(cursor, scope),
-            include_cached=_ctx.role == Role.ROOT,
-            additional_owner=(_ctx.account_id, _ctx.user.user_id)
-            if _ctx.role == Role.ROOT
+            include_cached=(_ctx.role == Role.ROOT and _ctx.workspace_target is None),
+            additional_owner=(_ctx.account_id, task_owner_key(_ctx))
+            if (_ctx.role == Role.ROOT and _ctx.workspace_target is None)
             else None,
             **filters,
         )
@@ -139,7 +156,7 @@ async def list_tasks(
                 "next_cursor": encode_cursor(items[-1], scope) if more else None,
             },
         )
-    if _ctx.role == Role.ROOT:
+    if _ctx.role == Role.ROOT and _ctx.workspace_target is None:
         system_tasks = await tracker.list_tasks(
             task_type=task_type,
             status=status,
@@ -166,7 +183,7 @@ async def list_tasks(
             resource_id=resource_id,
             limit=limit,
             account_id=_ctx.account_id,
-            user_id=_ctx.user.user_id,
+            user_id=task_owner_key(_ctx),
             include_internal=include_internal,
         )
     return Response(status="ok", result=[t.to_dict() for t in tasks])

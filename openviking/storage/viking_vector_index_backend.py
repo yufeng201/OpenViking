@@ -2685,6 +2685,16 @@ class VikingVectorIndexBackend:
         *,
         acl_enabled: bool,
     ) -> Optional[FilterExpr]:
+        if ctx.workspace_target:
+            account_filter = Eq("account_id", ctx.account_id)
+            # A worker's ACL exemption never broadens its asset workspace.
+            if ctx.bypass_acl or ctx.role == Role.ROOT:
+                return And(
+                    [
+                        account_filter,
+                        Or([PathScope("uri", root, depth=-1) for root in visible_roots(ctx)]),
+                    ]
+                )
         if ctx.bypass_acl:
             return Eq("account_id", ctx.account_id)
         if ctx.role == Role.ROOT:
@@ -2738,6 +2748,25 @@ class VikingVectorIndexBackend:
         ]
         if ctx.role == Role.ADMIN:
             access_filters.append(PathScope("uri", "viking://resources", depth=-1))
+        if ctx.workspace_target:
+            # Workspace membership owns this subtree independently of resource ACLs.
+            # The legacy personal-resource exception must not leak into this view.
+            return And(
+                [
+                    account_filter,
+                    Or(
+                        [
+                            PathScope("uri", ctx.workspace_target.root, depth=-1),
+                            And(
+                                [
+                                    PathScope("uri", "viking://resources", depth=-1),
+                                    Or(access_filters),
+                                ]
+                            ),
+                        ]
+                    ),
+                ]
+            )
         return And([account_filter, Or(access_filters)])
 
     async def _acl_enabled(self, ctx: RequestContext) -> bool:

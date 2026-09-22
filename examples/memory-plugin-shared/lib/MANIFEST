@@ -22,3 +22,4 @@ workspace-config.mjs
 workspace-identity.mjs
 workspace-peer.mjs
 workspace-registry.mjs
+workspace-target.mjs

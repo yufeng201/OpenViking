@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
+from openviking.core.workspace import WorkspaceTarget
 from openviking.pyagfs import AsyncAGFSClient
 from openviking.server.error_mapping import is_not_found_error
 from openviking.server.identity import RequestContext, Role
@@ -125,12 +126,18 @@ class SessionAutoCommitScheduler:
         for item in results:
             if item is None:
                 continue
-            session_id, account_id, user_id = item
+            session_id, account_id, user_id = item[:3]
             due += 1
             ctx = RequestContext(
                 user=UserIdentifier(account_id=account_id, user_id=user_id),
                 role=Role.USER,
             )
+            if len(item) == 4:
+                ctx.workspace_target = item[3]
+                # New auto-commits still require a current member; accepted queue
+                # work alone receives the internal worker capability.
+                if item[3].kind == "project":
+                    ctx.project_ids = (item[3].owner_id,)
             did_schedule = await self._session_service.maybe_schedule_auto_commit(
                 session_id,
                 ctx,
@@ -145,7 +152,7 @@ class SessionAutoCommitScheduler:
         agfs: AsyncAGFSClient,
         meta_path: str,
         now: datetime,
-    ) -> Optional[tuple[str, str, str]]:
+    ) -> Optional[tuple[str, str, str] | tuple[str, str, str, "WorkspaceTarget"]]:
         try:
             content = await agfs.read(meta_path)
             raw = content.decode("utf-8") if isinstance(content, bytes) else str(content)
@@ -189,6 +196,14 @@ class SessionAutoCommitScheduler:
             )
             return None
 
+        if meta.get("workspace_target"):
+            from openviking.service.workspace_sessions import workspace_candidate
+
+            try:
+                return workspace_candidate(meta_path, meta)
+            except (ValueError, TypeError):
+                logger.warning("Invalid workspace session metadata: %s", meta_path)
+                return None
         session_id = _session_id_from_meta_path(meta_path)
         account_id = _account_id_from_meta_path(meta_path)
         user_id = _user_id_from_meta_path(meta_path)
@@ -214,6 +229,16 @@ class SessionAutoCommitScheduler:
             if not account_entry.get("isDir", False):
                 continue
 
+            from openviking.service.workspace_sessions import workspace_meta_paths
+
+            async for meta_path in workspace_meta_paths(agfs, account_id):
+                batch.append(meta_path)
+                seen.add(meta_path)
+                if len(batch) >= self._scan_batch_size:
+                    yield batch
+                    batch = []
+                    if self._scan_batch_pause_seconds > 0:
+                        await self._sleep(self._scan_batch_pause_seconds)
             try:
                 user_entries = await agfs.ls(f"/local/{account_id}/user")
             except Exception as exc:

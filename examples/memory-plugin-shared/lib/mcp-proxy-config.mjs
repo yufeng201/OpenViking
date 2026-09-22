@@ -11,6 +11,9 @@
 import { homedir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
 
+import { resolveWorkspaceSettings } from "./plugin-config.mjs";
+import { resolveEffectivePeerId } from "./workspace-peer.mjs";
+import { workspaceConfigPaths } from "./workspace-config.mjs";
 import { CONNECTION_ENV_VARS, CREDENTIAL_ENV_VARS } from "./credentials.mjs";
 
 export const DEFAULT_PROXY_TIMEOUT_MS = 15000;
@@ -25,6 +28,7 @@ const MIN_PROXY_TIMEOUT_MS = 1000;
 export const MCP_PROXY_ENV_VARS = [
   ...CONNECTION_ENV_VARS,
   "OPENVIKING_HOME",
+  "OPENVIKING_WORKSPACE_ROOT",
   "OPENVIKING_STATE_DIR",
   "OPENVIKING_RECALL_PEER_SCOPE",
   "OPENVIKING_TIMEOUT_MS",
@@ -218,13 +222,19 @@ export function buildMcpProxyConfig({
   const resolvedExtraHeaders = extraHeaders && typeof extraHeaders === "object" && !Array.isArray(extraHeaders)
     ? { ...extraHeaders }
     : parseExtraHeaders(env.OPENVIKING_EXTRA_HEADERS);
+  const workspaceRoot = String(env.OPENVIKING_WORKSPACE_ROOT || "").trim();
+  const workspace = workspaceRoot ? resolveWorkspaceSettings(workspaceRoot, env) : null;
+  const targetSettings = workspace?.settings || {};
+  const workspacePeer = targetSettings.workspaceProtocol === 2
+    ? resolveEffectivePeerId({ cfg: { ...targetSettings, harness: "codex" }, cwd: workspaceRoot, env }).peerId : "";
   return {
+    ...targetSettings,
     mcpUrl: mcpUrl || `${trimSlash(baseUrl)}/mcp`,
     apiKey: apiKey || "",
     account: account || "",
     user: user || "",
     sendIdentityHeaders: sendIdentityHeaders === true,
-    peerId: peerId || "",
+    peerId: targetSettings.workspaceProtocol === 2 ? workspacePeer : peerId || "",
     userAgent: userAgent || "",
     timeoutMs: Math.max(
       MIN_PROXY_TIMEOUT_MS,
@@ -234,7 +244,7 @@ export function buildMcpProxyConfig({
     debugLogPath,
     credentialSource: credentialSource || "auto",
     credentialPath: credentialPath || "",
-    watchedPaths: uniq([...watchedPaths, ...defaultCredentialPaths(env)]),
+    watchedPaths: uniq([...watchedPaths, ...defaultCredentialPaths(env), ...(workspaceRoot ? workspaceConfigPaths(workspaceRoot).map((file) => file.path) : [])]),
     extraHeaders: resolvedExtraHeaders,
   };
 }

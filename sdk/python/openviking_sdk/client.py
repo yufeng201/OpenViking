@@ -326,7 +326,14 @@ class AsyncHTTPClient:
         ldap_password: Optional[str] = None,
         # OIDC parameters
         oidc_token: Optional[str] = None,
+        project_id: Optional[str] = None,
+        workspace_peer_id: Optional[str] = None,
     ):
+        from .workspace import workspace_headers
+
+        self._workspace_headers = workspace_headers(project_id, workspace_peer_id)
+        if self._workspace_headers and (actor_peer_id or agent_id):
+            raise ValueError("Workspace selection cannot be combined with actor_peer_id")
         if actor_peer_id and agent_id:
             raise ValueError("actor_peer_id cannot be used with agent_id")
         effective_user = user if user is not None else user_id
@@ -350,7 +357,7 @@ class AsyncHTTPClient:
         self._api_key = config.api_key
         self._account = config.account
         self._user_id = config.user
-        self._actor_peer_id = config.actor_peer_id
+        self._actor_peer_id = None if self._workspace_headers else config.actor_peer_id
         self._gateway_token = config.gateway_token
         self._timeout = config.timeout
         self._extra_headers = config.extra_headers
@@ -395,6 +402,18 @@ class AsyncHTTPClient:
                 headers["Authorization"] = f"Bearer {token}"
 
         headers.update(self._extra_headers)
+        if self._workspace_headers:
+            headers = {
+                k: v
+                for k, v in headers.items()
+                if k.lower()
+                not in {
+                    "x-openviking-project",
+                    "x-openviking-workspace-peer",
+                    "x-openviking-actor-peer",
+                }
+            }
+        headers.update(self._workspace_headers)
         client_kwargs: Dict[str, Any] = {
             "base_url": self._url,
             "headers": headers,
@@ -406,6 +425,21 @@ class AsyncHTTPClient:
             client_kwargs["limits"] = self._http_limits
         self._http = httpx.AsyncClient(**client_kwargs)
         self._observer = _HTTPObserver(self)
+        if self._workspace_headers:
+            try:
+                response = await self._request("GET", "/api/v1/workspace")
+                body = response.json()
+                capabilities = body.get("result", {}).get("capabilities", {})
+                kind = "project" if "X-OpenViking-Project" in self._workspace_headers else "peer"
+                if (
+                    response.status_code != 200
+                    or capabilities.get("protocol_version") != 2
+                    or kind not in capabilities.get("target_kinds", [])
+                ):
+                    raise ValueError("Server does not support the selected workspace")
+            except BaseException:
+                await self.close()
+                raise
 
     @staticmethod
     def _has_header(headers: Dict[str, str], name: str) -> bool:
@@ -454,6 +488,15 @@ class AsyncHTTPClient:
         request_kwargs = dict(kwargs)
         headers = _request_actor_peer_headers()
         headers.update(dict(request_kwargs.pop("headers", {}) or {}))
+        if self._workspace_headers:
+            for name in list(headers):
+                if name.lower() in {
+                    "x-openviking-project",
+                    "x-openviking-workspace-peer",
+                    "x-openviking-actor-peer",
+                }:
+                    del headers[name]
+            headers.update(self._workspace_headers)
         has_explicit_gateway_header = self._has_explicit_gateway_header(headers)
 
         # Multipart streams cannot be replayed safely after the first request. Probe the

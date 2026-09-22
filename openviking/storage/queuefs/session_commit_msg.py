@@ -13,6 +13,8 @@ class SessionCommitMsg:
     session_uri: str
     archive_uri: str
     user: Dict[str, str]
+    protocol_version: int = 1
+    workspace_target: Dict[str, Any] | None = None
     memory_policy: Dict[str, Any] = field(default_factory=dict)
     usage_uris: List[str] = field(default_factory=list)
     # When True, Phase 2's final meta merge also clears the auto-commit error
@@ -31,5 +33,10 @@ class SessionCommitMsg:
         """Load a queue message while ignoring fields from newer producers."""
         if not isinstance(payload, dict):
             raise ValueError("session commit queue payload must be an object")
+        version = payload.get("protocol_version", 1)
+        if version not in {1, 2}:
+            raise ValueError("Unsupported session commit protocol")
+        if bool(payload.get("workspace_target")) != (version == 2):
+            raise ValueError("Workspace commit requires protocol version 2")
         known_fields = {item.name for item in fields(cls)}
         return cls(**{key: value for key, value in payload.items() if key in known_fields})

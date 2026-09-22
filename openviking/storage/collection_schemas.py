@@ -135,6 +135,7 @@ class CollectionSchemas:
                 {"FieldName": "md5", "FieldType": "string", "DefaultValue": ""},
                 {"FieldName": "account_id", "FieldType": "string"},
                 {"FieldName": "owner_user_id", "FieldType": "string"},
+                {"FieldName": "owner_project_id", "FieldType": "string"},
                 {
                     "FieldName": ACL_MODE_FIELD,
                     "FieldType": "string",
@@ -166,6 +167,7 @@ class CollectionSchemas:
                 "search_tags",
                 "account_id",
                 "owner_user_id",
+                "owner_project_id",
                 ACL_MODE_FIELD,
                 *ACL_GRANT_FIELDS,
             ]

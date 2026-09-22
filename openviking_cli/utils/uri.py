@@ -57,6 +57,7 @@ class VikingURI:
     # SCOPES that can be listed in root directory (ov ls)
     LISTABLE_SCOPES = {
         "resources",
+        "project",
         "user",
         "agent",
     }

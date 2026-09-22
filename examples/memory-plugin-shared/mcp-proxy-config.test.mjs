@@ -132,6 +132,7 @@ test("the forwarded-env list names every variable a proxy's config reads", () =>
     "OPENVIKING_EXTRA_HEADERS",
     "OPENVIKING_HOME",
     "OPENVIKING_STATE_DIR",
+    "OPENVIKING_WORKSPACE_ROOT",
   ]);
   assert.deepEqual(new Set(MCP_PROXY_ENV_VARS), expected);
   assert.equal(MCP_PROXY_ENV_VARS.length, expected.size, "no name is listed twice");

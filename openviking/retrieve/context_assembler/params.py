@@ -13,7 +13,15 @@ DetailRequest = Union[Literal["auto", "abstract", "overview", "full"], Dict[str,
 Tier = Literal["uri", "abstract", "overview", "full"]
 Purpose = Literal["chat", "coding"]
 
-MEMORY_CATEGORIES: Tuple[str, ...] = ("events", "entities", "preferences", "experiences")
+MEMORY_CATEGORIES: Tuple[str, ...] = (
+    "events",
+    "entities",
+    "preferences",
+    "experiences",
+    "architecture",
+    "conventions",
+    "decisions",
+)
 # Built-in memory types outside MEMORY_CATEGORIES — cases, patterns, tools,
 # trajectories and skill-usage memories — cannot own a quota bucket: their
 # retrieval scope is the memory root, which every other bucket already covers.

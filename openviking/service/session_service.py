@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from openviking.core.namespace import canonical_session_uri
+from openviking.core.workspace import task_owner_key
 from openviking.server.config import ToolOutputExternalizationConfig
 from openviking.server.identity import RequestContext
 from openviking.server.user_config import read_user_memory_policy
@@ -217,6 +218,8 @@ class SessionService:
 
     async def _get_user_memory_policy(self, ctx: RequestContext) -> Optional[Dict[str, Any]]:
         """Resolve the latest User policy with the configured server fallback."""
+        if ctx.workspace_target:
+            return None
         memory_policy = await read_user_memory_policy(self._viking_fs, ctx)
         if memory_policy is not None:
             return memory_policy
@@ -450,7 +453,7 @@ class SessionService:
         task = await get_task_tracker().get(
             task_id,
             account_id=ctx.account_id,
-            user_id=ctx.user.user_id,
+            user_id=task_owner_key(ctx),
         )
         return task.to_dict() if task else None
 
@@ -541,7 +544,7 @@ class SessionService:
         is no recheck/polling machinery here. Scheduling never propagates errors
         to the caller's message write or the idle scan batch.
         """
-        claim = (ctx.account_id, ctx.user.user_id, session_id)
+        claim = (ctx.account_id, task_owner_key(ctx), session_id)
         try:
             if session is None:
                 session = await self.get(session_id, ctx, auto_create=False)
@@ -556,14 +559,12 @@ class SessionService:
                     "session_commit",
                     session_id,
                     account_id=ctx.account_id,
-                    user_id=ctx.user.user_id,
+                    user_id=task_owner_key(ctx),
                 ):
                     return False
                 self._auto_commit_inflight.add(claim)
         except Exception:
-            logger.debug(
-                "Skipped auto-commit scheduling for %s", session_id, exc_info=True
-            )
+            logger.debug("Skipped auto-commit scheduling for %s", session_id, exc_info=True)
             return False
 
         task = asyncio.create_task(self.run_auto_commit(session_id, ctx, reason=reason_hint))
@@ -573,14 +574,14 @@ class SessionService:
 
     async def run_auto_commit(self, session_id: str, ctx: RequestContext, *, reason: str) -> None:
         """Run one best-effort automatic commit and release the in-flight claim."""
-        claim = (ctx.account_id, ctx.user.user_id, session_id)
+        claim = (ctx.account_id, task_owner_key(ctx), session_id)
         try:
             tracker = get_task_tracker()
             if await tracker.has_running(
                 "session_commit",
                 session_id,
                 account_id=ctx.account_id,
-                user_id=ctx.user.user_id,
+                user_id=task_owner_key(ctx),
             ):
                 return
 

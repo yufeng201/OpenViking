@@ -1049,7 +1049,12 @@ async def delete_group(
     ctx: RequestContext = Depends(get_request_context),
 ):
     _check_account_access(ctx, account_id)
-    await _get_api_key_manager(request).delete_group(account_id, group_id)
+    from openviking.server.routers.projects import project_service
+
+    projects = project_service(request)
+    async with projects.store.lock(account_id):
+        await projects.ensure_group_unreferenced(account_id, group_id)
+        await _get_api_key_manager(request).delete_group(account_id, group_id)
     return Response(status="ok", result={"deleted": True})
 
 

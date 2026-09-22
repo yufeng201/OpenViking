@@ -52,6 +52,9 @@ class EmbeddingMsgConverter:
         if uri:
             owner_fields = owner_fields_for_uri(uri)
             context_data["uri"] = owner_fields["uri"]
+            if owner_fields.get("owner_project_id"):
+                context_data["owner_project_id"] = owner_fields["owner_project_id"]
+                context_data["owner_user_id"] = None
         if context_data.get("owner_user_id") is None:
             if owner_fields is not None:
                 context_data["owner_user_id"] = owner_fields["owner_user_id"]

@@ -117,18 +117,19 @@ test("re-spelling origin is not a different repository", () => {
   assert.equal(identityKey(ssh), identityKey(https));
 });
 
-test("an entry from a newer client is skipped rather than half-read", async () => {
+test("an entry from a newer client blocks workspace capture", async () => {
   const env = await home();
   const root = "/Users/x/src/api";
   await mkdir(registryDir(env), { recursive: true });
   await writeFile(
     entryPath(root, env, repo),
-    JSON.stringify({ version: 2, peer: { id: "pinned" }, important: "future" }),
+    JSON.stringify({ version: 3, peer: { id: "pinned" }, important: "future" }),
   );
 
   const { entry, warnings } = readEntry(root, { identity: repo, env });
-  assert.equal(entry, null);
-  assert.ok(warnings.some((w) => w.includes("understands 1")));
+  assert.equal(entry.workspace_protocol, 2);
+  assert.match(entry.workspace_error, /unsupported workspace version/);
+  assert.ok(warnings.length > 0);
 });
 
 test("a free-form section in the registry keeps its own vocabulary", async () => {

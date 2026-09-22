@@ -236,6 +236,11 @@ class MemoryIsolationHandler:
         return True
 
     def render_schema_directories(self, memory_type_schema: MemoryTypeSchema) -> List[str]:
+        if self.ctx and self.ctx.workspace_target:
+            from openviking.session.memory.workspace_registry import workspace_registry
+
+            schema = workspace_registry(self.ctx).get(memory_type_schema.memory_type)
+            return [schema.directory] if schema else []
         user_id = self.ctx.user.user_id if self.ctx and self.ctx.user else "default"
         user_space = user_id
         user_spaces: List[str] = []
@@ -363,6 +368,18 @@ class MemoryIsolationHandler:
         if not self.ctx or not self.ctx.user:
             return []
 
+        if self.ctx.workspace_target:
+            from openviking.session.memory.workspace_registry import workspace_registry
+
+            schema = workspace_registry(self.ctx).get(memory_type_schema.memory_type)
+            if schema is None:
+                return self._skip_operation(operation, MemoryOperationSkipCode.MEMORY_TYPE_FILTERED)
+            if operation.memory_fields.get(
+                "ranges"
+            ) is not None and not self._range_is_fully_in_bounds(operation.memory_fields["ranges"]):
+                return self._skip_operation(operation, MemoryOperationSkipCode.INVALID_RANGES)
+            operation.memory_fields.pop("peer_id", None)
+            return [generate_uri(schema, operation.memory_fields, extract_context=extract_context)]
         user_id = self.ctx.user.user_id
         operation.memory_fields["user_id"] = user_id
 

@@ -1,4 +1,5 @@
 // GENERATED FROM examples/memory-plugin-shared/lib. DO NOT EDIT.
+import { resolvedWorkspaceTarget, workspaceTargetHeaders } from "./workspace-target.mjs";
 /**
  * The one path from a hook to the OpenViking server.
  *
@@ -29,7 +30,9 @@ export function buildOvHeaders(cfg = {}, { actorPeerId = "", identityHeaders, ex
   if (cfg.apiKey) headers["Authorization"] = `Bearer ${cfg.apiKey}`;
   if (identity && cfg.account) headers["X-OpenViking-Account"] = cfg.account;
   if (identity && cfg.user) headers["X-OpenViking-User"] = cfg.user;
-  if (actorPeerId) headers["X-OpenViking-Actor-Peer"] = actorPeerId;
+  const target = resolvedWorkspaceTarget(cfg, actorPeerId);
+  Object.assign(headers, workspaceTargetHeaders(target));
+  if (!target && actorPeerId) headers["X-OpenViking-Actor-Peer"] = actorPeerId;
   if (cfg.userAgent) headers["User-Agent"] = cfg.userAgent;
   return { ...headers, ...extraHeaders };
 }
@@ -59,6 +62,7 @@ export function createOvHttp(cfg = {}, {
 } = {}) {
   // dsh and pi name this field `endpoint`; every other harness names it `baseUrl`.
   const baseUrl = cfg.baseUrl || cfg.endpoint || "";
+  let verifiedTarget = "";
   return async function fetchJSON(path, init = {}, options = {}) {
     const timeoutMs = Math.max(MIN_TIMEOUT_MS, Number(options.timeoutMs) || Number(defaultTimeoutMs) || 0);
     const controller = new AbortController();
@@ -76,6 +80,26 @@ export function createOvHttp(cfg = {}, {
         }),
         ...(init.headers || {}),
       };
+      const target = resolvedWorkspaceTarget(cfg, options.actorPeerId ?? resolveActorPeerId());
+      if (target) {
+        for (const name of Object.keys(headers)) {
+          if (["x-openviking-project", "x-openviking-workspace-peer", "x-openviking-actor-peer"].includes(name.toLowerCase())) delete headers[name];
+        }
+        Object.assign(headers, workspaceTargetHeaders(target));
+      }
+      if (target && path !== "/api/v1/workspace" && path !== "/health") {
+        const key = JSON.stringify(target);
+        if (verifiedTarget !== key) {
+          const probe = await fetch(`${baseUrl}/api/v1/workspace`, { headers, signal: controller.signal });
+          const body = await probe.json().catch(() => null);
+          const capabilities = body?.result?.capabilities;
+          if (!probe.ok || capabilities?.protocol_version !== 2
+              || !capabilities?.target_kinds?.includes(target.kind)) {
+            return { ok: false, status: 409, error: { message: "Workspace protocol is unavailable; capture/recall stopped" } };
+          }
+          verifiedTarget = key;
+        }
+      }
       const response = await fetch(`${baseUrl}${path}`, { ...init, headers, signal: controller.signal });
       const body = await response.json().catch(() => null);
       if (requireJsonBody && !body) {

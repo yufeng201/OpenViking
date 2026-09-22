@@ -1104,7 +1104,12 @@ class MemoryUpdater:
                 content = await viking_fs.read_file(uri, ctx=ctx)
                 if content:
                     old_content = MemoryFileUtils.read(content, uri=uri)
-            except Exception:
+            except Exception as exc:
+                if ctx.workspace_target:
+                    from openviking.server.error_mapping import is_not_found_error
+
+                    if not is_not_found_error(exc):
+                        raise
                 # File doesn't exist yet, that's okay
                 pass
             # Fall back to pre-fetched content if disk read failed
@@ -1194,6 +1199,13 @@ class MemoryUpdater:
                 elif existing_backlinks:
                     metadata["backlinks"] = existing_backlinks
 
+            if ctx.workspace_target and ctx.workspace_target.kind == "project":
+                from openviking.session.memory.project_provenance import add_project_source
+
+                metadata["sources"] = (
+                    list(old_content.extra_fields.get("sources", [])) if old_content else []
+                )
+                add_project_source(metadata, resolved_op, ctx)
             mf = MemoryFile.from_parsed(uri=uri, parsed=metadata)
             new_full_content = MemoryFileUtils.write(
                 mf,

@@ -8,6 +8,7 @@ from contextlib import suppress
 from copy import deepcopy
 from typing import Any, Dict, Optional
 
+from openviking.core.workspace import context_for_owned_uri, task_owner_key
 from openviking.observability.context import bind_execution_context
 from openviking.server.identity import RequestContext, Role
 from openviking.service.task_tracker import TaskStatus, get_task_tracker
@@ -118,6 +119,7 @@ class AddResourceProcessor(DequeueHandlerBase):
             logger.exception("[AddResource] Failed to record initial Watch execution")
 
     async def _handle_cancelled(self, msg: AddResourceMsg, ctx: RequestContext) -> None:
+        ctx = context_for_owned_uri(ctx, msg.root_uri)
         await self._release_cancelled_resources(msg, ctx)
         await self._record_watch_execution(msg, "cancelled")
 
@@ -146,12 +148,13 @@ class AddResourceProcessor(DequeueHandlerBase):
             actor_peer_id=msg.actor_peer_id,
             bypass_acl=msg.bypass_acl,
         )
+        ctx = context_for_owned_uri(ctx, msg.root_uri)
         tracker = get_task_tracker()
         task = await tracker.create(
             "add_resource",
             resource_id=None if msg.defer_target_resolution else msg.root_uri,
             account_id=ctx.account_id,
-            user_id=ctx.user.user_id,
+            user_id=task_owner_key(ctx),
             task_id=msg.task_id,
             meta=({"internal": True} if msg.internal_task else {"source_path": msg.source_path}),
         )
@@ -190,7 +193,7 @@ class AddResourceProcessor(DequeueHandlerBase):
                     msg.task_id,
                     f"Invalid lock_handoff: {exc}",
                     account_id=ctx.account_id,
-                    user_id=ctx.user.user_id,
+                    user_id=task_owner_key(ctx),
                 )
                 await self._record_watch_execution(
                     msg,
@@ -223,13 +226,13 @@ class AddResourceProcessor(DequeueHandlerBase):
                 msg.task_id,
                 stage,
                 account_id=ctx.account_id,
-                user_id=ctx.user.user_id,
+                user_id=task_owner_key(ctx),
             )
 
         with (
             bind_execution_context(),
             bind_telemetry(telemetry),
-            bind_task_context(msg.task_id, ctx.account_id, ctx.user.user_id),
+            bind_task_context(msg.task_id, ctx.account_id, task_owner_key(ctx)),
         ):
             terminal = False
             try:
@@ -248,7 +251,7 @@ class AddResourceProcessor(DequeueHandlerBase):
                     await tracker.start(
                         msg.task_id,
                         account_id=ctx.account_id,
-                        user_id=ctx.user.user_id,
+                        user_id=task_owner_key(ctx),
                         stage="queued",
                     )
                     result = await self._resource_service.execute_add_resource_job(
@@ -259,7 +262,7 @@ class AddResourceProcessor(DequeueHandlerBase):
                         task_auth=await tracker.get_task_auth(
                             msg.task_id,
                             account_id=ctx.account_id,
-                            user_id=ctx.user.user_id,
+                            user_id=task_owner_key(ctx),
                         ),
                     )
                     if result.get("status") == "error":
@@ -282,7 +285,7 @@ class AddResourceProcessor(DequeueHandlerBase):
                             msg.task_id,
                             error,
                             account_id=ctx.account_id,
-                            user_id=ctx.user.user_id,
+                            user_id=task_owner_key(ctx),
                             result=failure_result,
                         )
                         await self._record_watch_execution(msg, "failed", error)
@@ -293,7 +296,7 @@ class AddResourceProcessor(DequeueHandlerBase):
                             msg.task_id,
                             deepcopy(result),
                             account_id=ctx.account_id,
-                            user_id=ctx.user.user_id,
+                            user_id=task_owner_key(ctx),
                             resource_id=result.get("root_uri"),
                         )
                 else:
@@ -348,7 +351,7 @@ class AddResourceProcessor(DequeueHandlerBase):
                     msg.task_id,
                     result,
                     account_id=ctx.account_id,
-                    user_id=ctx.user.user_id,
+                    user_id=task_owner_key(ctx),
                     resource_id=result.get("root_uri"),
                 )
                 terminal = True
@@ -390,7 +393,7 @@ class AddResourceProcessor(DequeueHandlerBase):
                     msg.task_id,
                     str(exc),
                     account_id=ctx.account_id,
-                    user_id=ctx.user.user_id,
+                    user_id=task_owner_key(ctx),
                     result=failure_result,
                 )
                 terminal = True

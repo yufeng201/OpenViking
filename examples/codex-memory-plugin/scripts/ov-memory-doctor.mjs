@@ -22,6 +22,9 @@ import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolvedWorkspaceTarget } from "./shared/workspace-target.mjs";
+import { resolveEffectivePeerId } from "./shared/workspace-peer.mjs";
+import { resolveWorkspaceSettings } from "./shared/plugin-config.mjs";
 import { loadConfig } from "./config.mjs";
 import { getStateDir } from "./session-state.mjs";
 import {
@@ -318,6 +321,18 @@ function checkConfig(report, cfg, host) {
   const keyInfo = reportCredentials(report, cfg, credentialSources(cfg, cliConf, ovConf), { account: cfg.account, user: cfg.user });
   report.info(`auth mode ${cfg.authMode} (identity headers ${cfg.sendIdentityHeaders ? "sent" : "not sent"}; trusted is implied when account/user are set)`);
   const peer = reportPeer(report, cfg);
+  try {
+    const effective = resolveEffectivePeerId({ cfg, cwd: process.cwd() });
+    const target = resolvedWorkspaceTarget(cfg, effective.peerId);
+    if (target) {
+      report.info(`workspace target: ${target.kind}${target.id ? `/${target.id}` : ""}`);
+      const workspace = resolveWorkspaceSettings(process.cwd(), process.env);
+      report.info(`workspace configuration root: ${workspace.root || process.cwd()}`);
+      if (!process.env.OPENVIKING_WORKSPACE_ROOT) report.warn("MCP workspace root is not set", "Hooks use the repository target but MCP requires an explicit root", "set OPENVIKING_WORKSPACE_ROOT in this repository's MCP environment and restart the Agent");
+    }
+  } catch (error) {
+    report.fail("Invalid workspace target", error.message, "fix the repository settings before starting a new Agent session");
+  }
   reportTimeouts(report, cfg, host);
 
   const toggles = [`auto-inject ${cfg.noAutoInject ? "OFF" : "on"}`, `auto-recall ${cfg.autoRecall ? "on" : "OFF"}`, `auto-capture ${cfg.autoCapture ? "on" : "OFF"}`, `commit on compact ${cfg.autoCommitOnCompact ? "on" : "OFF"}`, `recall compress ${cfg.recallRewrite}`, `write path ${cfg.writePathAsync ? "async" : "sync"}`];

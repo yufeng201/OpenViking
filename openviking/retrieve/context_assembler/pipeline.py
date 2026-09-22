@@ -58,6 +58,18 @@ async def assemble_context(
 ) -> AssembleResult:
     """Run the full assembly pipeline for one request."""
     quotas = normalize_quotas(params.quotas, params.purpose)
+    if ctx.workspace_target and ctx.workspace_target.kind == "project":
+        categories = {
+            "architecture": 2,
+            "conventions": 2,
+            "decisions": 2,
+            "experiences": 2,
+            "resources": 3,
+        }
+        explicit = params.quotas or {}
+        quotas = {
+            key: max(0, int(explicit.get(key, default))) for key, default in categories.items()
+        }
     penalties = normalize_penalties(params.other_peer_penalty)
 
     intent_checker = getattr(service.search, "is_intent_enabled", None)

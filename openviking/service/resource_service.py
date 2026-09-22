@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 from openviking.core.namespace import is_content_root_uri
+from openviking.core.workspace import resource_task_owner, task_owner_key
 from openviking.observability.http_error_context import sanitize_public_http_error
 from openviking.parse.backend import ParserBackend, normalize_parser_backend
 from openviking.parse.mode import ParseMode, normalize_parse_mode
@@ -683,7 +684,7 @@ class ResourceService:
                 "add_resource",
                 resource_id=None if msg.defer_target_resolution else msg.root_uri,
                 account_id=msg.account_id,
-                user_id=msg.user_id,
+                user_id=resource_task_owner(msg),
                 task_id=msg.task_id,
                 meta=(
                     {"internal": True} if msg.internal_task else {"source_path": msg.source_path}
@@ -701,7 +702,7 @@ class ResourceService:
                 task.task_id,
                 "queued",
                 account_id=msg.account_id,
-                user_id=msg.user_id,
+                user_id=resource_task_owner(msg),
             )
         except BaseException:
             if resource_lock is not None:
@@ -713,7 +714,7 @@ class ResourceService:
                     task.task_id,
                     "Failed to enqueue resource processing",
                     account_id=msg.account_id,
-                    user_id=msg.user_id,
+                    user_id=resource_task_owner(msg),
                 )
             raise
 
@@ -779,12 +780,12 @@ class ResourceService:
                 from openviking.service.task_tracker import get_task_tracker
 
                 tracker = get_task_tracker()
-                task = await tracker.get(msg.task_id, ctx.account_id, ctx.user.user_id)
+                task = await tracker.get(msg.task_id, ctx.account_id, task_owner_key(ctx))
                 saved = dict(task.meta.get("feishu_responses", {})) if task else {}
 
                 async def save_response(entry: str, response_id: str) -> None:
                     await tracker.record_feishu_response(
-                        msg.task_id, entry, response_id, ctx.account_id, ctx.user.user_id
+                        msg.task_id, entry, response_id, ctx.account_id, task_owner_key(ctx)
                     )
                     saved[entry] = response_id
 
@@ -1744,6 +1745,8 @@ class ResourceService:
                 "sitemap / RSS source instead, or re-add the resource when the "
                 "source changes."
             )
+        if ctx.workspace_target and watch_interval > 0:
+            raise InvalidArgumentError("Recurring resource watches are not supported in workspaces")
         if not to and not parent:
             from openviking.server.dependencies import get_server_config
 
@@ -1987,7 +1990,7 @@ class ResourceService:
             task = await get_task_tracker().wait(
                 task_id,
                 account_id=ctx.account_id,
-                user_id=ctx.user.user_id,
+                user_id=task_owner_key(ctx),
                 timeout=timeout,
             )
         except TimeoutError as exc:
@@ -2471,7 +2474,7 @@ class ResourceService:
             )
             task_tracker.register_running_task(task.task_id)
             try:
-                with bind_task_context(task.task_id, ctx.account_id, ctx.user.user_id):
+                with bind_task_context(task.task_id, ctx.account_id, task_owner_key(ctx)):
                     if isinstance(data, SkillProcessingPreparation):
                         result = await self._skill_processor.process_prepared_skill(
                             data,
@@ -2503,7 +2506,7 @@ class ResourceService:
                 monitor_started = True
                 asyncio.create_task(
                     self._monitor_queue_processing(
-                        task.task_id, telemetry_id, ctx.account_id, ctx.user.user_id
+                        task.task_id, telemetry_id, ctx.account_id, task_owner_key(ctx)
                     )
                 )
             if isinstance(result, dict) and "root_uri" not in result and result.get("uri"):
@@ -2558,7 +2561,7 @@ class ResourceService:
                     monitor_started = True
                     asyncio.create_task(
                         self._monitor_queue_processing(
-                            task.task_id, telemetry_id, ctx.account_id, ctx.user.user_id
+                            task.task_id, telemetry_id, ctx.account_id, task_owner_key(ctx)
                         )
                     )
                 else:

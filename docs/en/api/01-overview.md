@@ -574,3 +574,16 @@ The sidebar is organized by responsibility rather than historical file size:
 | Operations & Observability | System, tasks, Observer, and Metrics |
 | Identity & Governance | Administration, ACL, and privacy configuration |
 | Protocols & Extensions | OpenViking Assets, WebDAV, Agent Runtime API, and VikingBot API |
+
+### [Project workspaces](26-project-workspaces.md)
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects` | Create project |
+| GET | `/api/v1/projects` | List visible projects |
+| GET | `/api/v1/projects/{project_id}` | Get project |
+| PATCH | `/api/v1/projects/{project_id}` | Update/archive project |
+| GET | `/api/v1/projects/{project_id}/members` | List members |
+| PUT | `/api/v1/projects/{project_id}/members/{user_id}` | Add member |
+| DELETE | `/api/v1/projects/{project_id}/members/{user_id}` | Remove member |
+| GET | `/api/v1/workspace` | Resolve workspace and capabilities |

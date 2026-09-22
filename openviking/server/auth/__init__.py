@@ -179,12 +179,16 @@ async def get_request_context(
     authorization_ctx: Optional[str] = Header(None, alias="Authorization"),
 ) -> RequestContext:
     """Convert ResolvedIdentity to RequestContext."""
-    return _build_request_context(
+    ctx = _build_request_context(
         request,
         identity,
         actor_peer_id=normalize_actor_peer_header(x_openviking_actor_peer),
         api_key=_extract_api_key(x_api_key_ctx, authorization_ctx),
     )
+
+    from openviking.server.workspace_context import resolve_workspace_context
+
+    return await resolve_workspace_context(request, ctx)
 
 
 async def get_session_request_context(
@@ -194,11 +198,15 @@ async def get_session_request_context(
     authorization_ctx: Optional[str] = Header(None, alias="Authorization"),
 ) -> RequestContext:
     """Build a Session context without accepting an actor peer view."""
-    return _build_request_context(
+    ctx = _build_request_context(
         request,
         identity,
         api_key=_extract_api_key(x_api_key_ctx, authorization_ctx),
     )
+
+    from openviking.server.workspace_context import resolve_workspace_context
+
+    return await resolve_workspace_context(request, ctx)
 
 
 async def get_upload_request_context(

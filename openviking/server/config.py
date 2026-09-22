@@ -299,6 +299,10 @@ class ToolOutputExternalizationConfig(BaseModel):
 
 
 class ServerConfig(BaseModel):
+    workspace_capture_enabled: bool = Field(
+        default=False,
+        description="Enable experimental project/peer capture after upgrading all workers and clients.",
+    )
     host: str = "127.0.0.1"
     port: int = 1933
     workers: int = 1

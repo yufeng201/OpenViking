@@ -17,6 +17,7 @@ from uuid import uuid4
 from openviking.core.context import ContextLevel
 from openviking.core.namespace import canonical_session_uri
 from openviking.core.peer_id import normalize_peer_id, safe_peer_id
+from openviking.core.workspace import task_owner_key
 from openviking.message import Message, Part
 from openviking.message.part import ContextPart, TextPart, ToolPart
 from openviking.pyagfs.exceptions import AGFSClientError, AGFSHTTPError, AGFSNotFoundError
@@ -498,6 +499,7 @@ class SessionMeta:
     updated_at: str = ""
     created_by_account_id: str = ""
     created_by_user_id: str = ""
+    workspace_target: Optional[Dict[str, Any]] = None
     message_count: int = 0
     total_message_count: Optional[int] = 0
     commit_count: int = 0
@@ -555,6 +557,7 @@ class SessionMeta:
             "updated_at": self.updated_at,
             "created_by_account_id": self.created_by_account_id,
             "created_by_user_id": self.created_by_user_id,
+            "workspace_target": self.workspace_target,
             "message_count": self.message_count,
             "commit_count": self.commit_count,
             "memories_extracted": dict(self.memories_extracted),
@@ -600,6 +603,7 @@ class SessionMeta:
             created_by_account_id=data.get("created_by_account_id", "")
             or data.get("account_id", ""),
             created_by_user_id=data.get("created_by_user_id", ""),
+            workspace_target=data.get("workspace_target"),
             message_count=data.get("message_count", 0),
             total_message_count=data.get("total_message_count"),
             commit_count=data.get("commit_count", 0),
@@ -675,6 +679,17 @@ class Session:
         self._auto_commit_threshold = auto_commit_threshold
         self._session_uri = session_uri or canonical_session_uri(self.ctx, self.session_id)
 
+        if self.ctx.workspace_target:
+            from dataclasses import replace
+
+            from openviking.core.identifiers import validate_identifier_part
+
+            if validate_identifier_part(self.session_id, "session_id"):
+                raise ValueError("Invalid session_id")
+            if self._session_uri != canonical_session_uri(self.ctx, self.session_id):
+                raise ValueError("Session URI does not match workspace target")
+            self.ctx = replace(self.ctx, workspace_session_uri=self._session_uri)
+
         self._messages: List[Message] = []
         self._usage_records: List[Usage] = []
         self._archive_meta_merge_lock = asyncio.Lock()
@@ -685,6 +700,9 @@ class Session:
             created_at=get_current_timestamp(),
             created_by_account_id=self.ctx.account_id,
             created_by_user_id=self.ctx.user.user_id,
+            workspace_target=self.ctx.workspace_target.to_dict()
+            if self.ctx.workspace_target
+            else None,
         )
         self._loaded = False
         self._tool_output_externalization_config = (
@@ -700,6 +718,15 @@ class Session:
     async def _resolve_memory_policy(
         self, override: Optional[Dict[str, Any]] = None
     ) -> MemoryPolicy:
+        if self.ctx.workspace_target:
+            from openviking.session.memory.workspace_registry import workspace_registry
+
+            return MemoryPolicy(
+                self_enabled=True,
+                peer_enabled=False,
+                memory_types=set(workspace_registry(self.ctx).list_names()),
+                working_memory_enabled=False,
+            )
         policy = override if override is not None else self._meta.memory_policy
         if policy is None and self._memory_policy_provider is not None:
             policy = await self._memory_policy_provider()
@@ -730,6 +757,11 @@ class Session:
                 f"{self._session_uri}/.meta.json", ctx=self.ctx
             )
             self._meta = SessionMeta.from_dict(json.loads(meta_content))
+            if (
+                self.ctx.workspace_target
+                and self._meta.workspace_target != self.ctx.workspace_target.to_dict()
+            ):
+                raise ValueError("Session metadata does not match workspace target")
             self._compression.compression_index = max(0, int(self._meta.commit_count))
             self._stats.compression_count = self._compression.compression_index
         except Exception as exc:
@@ -839,16 +871,34 @@ class Session:
             return False
 
     async def ensure_exists(self) -> None:
-        """Materialize session root and messages file if missing."""
-        if await self.exists():
+        """Materialize a workspace session under the same lock as append/commit."""
+        if not self.ctx.workspace_target:
+            if await self.exists():
+                return
+            await self._viking_fs.mkdir(self._session_uri, exist_ok=True, ctx=self.ctx)
+            await self._viking_fs.write_file(
+                f"{self._session_uri}/messages.jsonl", "", ctx=self.ctx
+            )
+            await self._save_meta()
             return
-        await self._viking_fs.mkdir(self._session_uri, exist_ok=True, ctx=self.ctx)
-        await self._viking_fs.write_file(
-            f"{self._session_uri}/messages.jsonl",
-            "",
-            ctx=self.ctx,
-        )
-        await self._save_meta()
+        lease = None
+        if self.ctx.workspace_target:
+            path = self._viking_fs._uri_to_path(self._session_uri, ctx=self.ctx)
+            lease = await self._viking_fs._async_agfs.pathlock_acquire_exact(
+                path, timeout_secs=_SESSION_PHASE1_LOCK_TIMEOUT_SECONDS
+            )
+        try:
+            if await self.is_materialized():
+                return
+            await self._viking_fs.mkdir(self._session_uri, exist_ok=True, ctx=self.ctx)
+            # Publish ownership before the message file, under the session lock.
+            await self._save_meta()
+            await self._viking_fs.write_file(
+                f"{self._session_uri}/messages.jsonl", "", ctx=self.ctx
+            )
+        finally:
+            if lease is not None:
+                await self._viking_fs._async_agfs.pathlock_release(lease)
 
     async def _save_meta(self, lease_ref: Optional[Any] = None) -> None:
         """Persist .meta.json to storage using an optional held PathLock lease."""
@@ -1746,7 +1796,7 @@ class Session:
                         str(task_id),
                         error,
                         account_id=self.ctx.account_id,
-                        user_id=self.ctx.user.user_id,
+                        user_id=task_owner_key(self.ctx),
                     )
                 return False
 
@@ -1927,10 +1977,11 @@ class Session:
             )
         if memory_policy is not None:
             effective_policy = await self._resolve_memory_policy(memory_policy)
-            _validate_memory_policy_types(effective_policy)
+            if not self.ctx.workspace_target:
+                _validate_memory_policy_types(effective_policy)
             effective_policy = _apply_agent_evolution_setting(
                 effective_policy,
-                agent_evolution_enabled=agent_evolution_enabled,
+                agent_evolution_enabled=agent_evolution_enabled or bool(self.ctx.workspace_target),
             )
             effective_memory_policy = effective_policy.to_dict()
             effective_memory_types = sorted(_effective_memory_types(effective_policy))
@@ -1995,10 +2046,12 @@ class Session:
             # override.
             if memory_policy is None:
                 effective_policy = await self._resolve_memory_policy()
-                _validate_memory_policy_types(effective_policy)
+                if not self.ctx.workspace_target:
+                    _validate_memory_policy_types(effective_policy)
                 effective_policy = _apply_agent_evolution_setting(
                     effective_policy,
-                    agent_evolution_enabled=agent_evolution_enabled,
+                    agent_evolution_enabled=agent_evolution_enabled
+                    or bool(self.ctx.workspace_target),
                 )
                 effective_memory_policy = effective_policy.to_dict()
                 effective_memory_types = sorted(_effective_memory_types(effective_policy))
@@ -2111,6 +2164,10 @@ class Session:
                 session_uri=self._session_uri,
                 archive_uri=archive_uri,
                 user=self.ctx.user.to_dict(),
+                workspace_target=self.ctx.workspace_target.to_dict()
+                if self.ctx.workspace_target
+                else None,
+                protocol_version=2 if self.ctx.workspace_target else 1,
                 memory_policy=effective_memory_policy,
                 usage_uris=list(dict.fromkeys(u.uri for u in usage_snapshot if u.uri)),
                 record_auto_commit_success=record_auto_commit_success,
@@ -2175,7 +2232,7 @@ class Session:
                     "session_commit",
                     resource_id=self.session_id,
                     account_id=self.ctx.account_id,
-                    user_id=self.ctx.user.user_id,
+                    user_id=task_owner_key(self.ctx),
                     task_id=task_id,
                 )
 
@@ -2299,7 +2356,7 @@ class Session:
             "session_commit",
             resource_id=self.session_id,
             account_id=self.ctx.account_id,
-            user_id=self.ctx.user.user_id,
+            user_id=task_owner_key(self.ctx),
             task_id=msg.task_id,
         )
 
@@ -2315,7 +2372,7 @@ class Session:
                 msg.task_id,
                 {"session_id": self.session_id, "archive_uri": msg.archive_uri},
                 account_id=self.ctx.account_id,
-                user_id=self.ctx.user.user_id,
+                user_id=task_owner_key(self.ctx),
             )
             return True
 
@@ -2331,7 +2388,7 @@ class Session:
                 msg.task_id,
                 str(failed.get("error") or "session commit failed"),
                 account_id=self.ctx.account_id,
-                user_id=self.ctx.user.user_id,
+                user_id=task_owner_key(self.ctx),
             )
             return True
 
@@ -2350,7 +2407,7 @@ class Session:
                 msg.task_id,
                 error,
                 account_id=self.ctx.account_id,
-                user_id=self.ctx.user.user_id,
+                user_id=task_owner_key(self.ctx),
             )
             return True
 
@@ -2378,7 +2435,7 @@ class Session:
                 msg.task_id,
                 error,
                 account_id=self.ctx.account_id,
-                user_id=self.ctx.user.user_id,
+                user_id=task_owner_key(self.ctx),
             )
             return True
 
@@ -2589,7 +2646,7 @@ class Session:
             await tracker.start(
                 task_id,
                 account_id=self.ctx.account_id,
-                user_id=self.ctx.user.user_id,
+                user_id=task_owner_key(self.ctx),
             )
             request_wait_tracker.register_request(telemetry.telemetry_id)
             register_telemetry(telemetry)
@@ -3034,7 +3091,7 @@ class Session:
                 task_id,
                 result_payload,
                 account_id=self.ctx.account_id,
-                user_id=self.ctx.user.user_id,
+                user_id=task_owner_key(self.ctx),
             )
             logger.info(f"Session {self.session_id} memory extraction completed")
         except asyncio.CancelledError:
@@ -3060,7 +3117,7 @@ class Session:
                 ),
             )
             await tracker.fail(
-                task_id, str(e), account_id=self.ctx.account_id, user_id=self.ctx.user.user_id
+                task_id, str(e), account_id=self.ctx.account_id, user_id=task_owner_key(self.ctx)
             )
             logger.exception(f"Memory extraction failed for session {self.session_id}")
 
@@ -4150,7 +4207,7 @@ class Session:
             str(task_id),
             error,
             account_id=self.ctx.account_id,
-            user_id=self.ctx.user.user_id,
+            user_id=task_owner_key(self.ctx),
         )
         logger.warning(
             "Skipped orphaned Session archive without QueueFS work: %s",

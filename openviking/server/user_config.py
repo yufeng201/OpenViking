@@ -283,6 +283,12 @@ async def effective_resource_add_target(
     ctx: RequestContext,
     server_config: Optional[ServerConfig],
 ) -> Optional[str]:
+    if ctx.workspace_target:
+        from openviking.core.workspace import workspace_root
+
+        return await validate_resource_add_target(
+            f"{workspace_root(ctx)}/resources", ctx=ctx, viking_fs=viking_fs
+        )
     user_settings = await read_user_add_targets(viking_fs, ctx)
     if user_settings.resource_uri:
         return await validate_resource_add_target(
@@ -304,6 +310,8 @@ async def effective_skill_add_target(
     ctx: RequestContext,
     server_config: Optional[ServerConfig],
 ) -> Optional[str]:
+    if ctx.workspace_target:
+        raise InvalidArgumentError("Workspace skill writes are not supported")
     user_settings = await read_user_add_targets(viking_fs, ctx)
     if user_settings.skill_uri:
         return await validate_skill_add_target(

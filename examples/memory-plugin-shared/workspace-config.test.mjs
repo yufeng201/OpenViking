@@ -83,14 +83,15 @@ test("labels are the user's vocabulary; every other section is swept for credent
   assert.deepEqual(layers[0].data.peer, { source: "git" });
 });
 
-test("a file this client does not understand is skipped, not obeyed", async () => {
+test("an unsupported workspace version blocks sync instead of selecting personal storage", async () => {
   const root = await workspace({
-    [TEAM_FILE]: { version: 2, recall: { enabled: false } },
+    [TEAM_FILE]: { version: 3, recall: { enabled: false } },
     [LOCAL_FILE]: "{ not json",
   });
   const { layers, warnings } = loadWorkspaceLayers(root);
-  assert.deepEqual(layers, []);
-  assert.ok(warnings.some((w) => w.includes("version 2")));
+  assert.equal(layers.length, 2);
+  assert.match(layers[0].data.workspace_error, /unsupported workspace version 3/);
+  assert.ok(warnings.some((w) => w.includes("version 3")));
   assert.ok(warnings.some((w) => w.includes("not valid JSON")));
 });
 
@@ -104,10 +105,7 @@ test("a non-object, an oversized file and a directory are all refused", async ()
   const { warnings } = loadWorkspaceLayers(root);
   assert.ok(warnings.some((w) => w.includes("must contain a JSON object")));
   assert.ok(warnings.some((w) => w.includes("larger than")));
-  assert.equal(
-    readWorkspaceFile(join(root, CONFIG_DIR_NAME, "config.dir.json"), { root }).data,
-    null,
-  );
+  assert.match(readWorkspaceFile(join(root, CONFIG_DIR_NAME, "config.dir.json"), { root }).data.workspace_error, /not a regular file/);
 });
 
 test("a symlink out of the workspace is refused", async () => {
@@ -117,7 +115,7 @@ test("a symlink out of the workspace is refused", async () => {
   await symlink(join(outside, "secrets.json"), join(root, CONFIG_DIR_NAME, TEAM_FILE));
 
   const { layers, warnings } = loadWorkspaceLayers(root);
-  assert.deepEqual(layers, []);
+  assert.match(layers[0].data.workspace_error, /outside the workspace/);
   assert.ok(warnings.some((w) => w.includes("outside the workspace")));
 });
 

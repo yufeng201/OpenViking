@@ -569,3 +569,16 @@ JSON 输出 - 错误：
 | 运维与观测 | 系统、任务、Observer、Metrics |
 | 身份与治理 | 管理员、ACL、隐私配置 |
 | 协议与扩展 | OpenViking Assets、WebDAV、Agent Runtime API、VikingBot API |
+
+### [Project workspaces](26-project-workspaces.md)
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/api/v1/projects` | Create project |
+| GET | `/api/v1/projects` | List visible projects |
+| GET | `/api/v1/projects/{project_id}` | Get project |
+| PATCH | `/api/v1/projects/{project_id}` | Update/archive project |
+| GET | `/api/v1/projects/{project_id}/members` | List members |
+| PUT | `/api/v1/projects/{project_id}/members/{user_id}` | Add member |
+| DELETE | `/api/v1/projects/{project_id}/members/{user_id}` | Remove member |
+| GET | `/api/v1/workspace` | Resolve workspace and capabilities |

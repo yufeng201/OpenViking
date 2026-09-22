@@ -44,6 +44,8 @@
  * injection and systemMessage for commit status at the same time.
  */
 
+import { assertSessionWorkspace, resolvedWorkspaceTarget } from "./shared/workspace-target.mjs";
+import { workspaceBinding } from "./shared/workspace-binding.mjs";
 import { loadConfig } from "./config.mjs";
 import { createLogger } from "./debug-log.mjs";
 import { catchUpTurns, commitOvSession, makeFetchJSON } from "./ov-session.mjs";
@@ -76,7 +78,7 @@ const HOOK_STARTED_AT = Date.now();
 
 // The sweep catches up unsent turns before committing, so it needs the same
 // HTTP helper the capture hooks use.
-const { fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId });
+let { fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId });
 
 const COMMITTED_TTL_MS = (() => {
   const v = Number(process.env.OPENVIKING_CODEX_COMMITTED_TTL_MS);
@@ -111,6 +113,7 @@ function emitSessionStartOutput({ contexts = [], systemMessage = "" } = {}) {
  * because the entries were recorded by sessions that were not bypassed.
  */
 async function replayPendingWrites() {
+  if (cfg.workspaceProtocol === 2) return;
   try {
     const result = await replayPending(fetchJSONRes, log);
     if (result.replayed > 0 || result.failed > 0 || result.deferred > 0) {
@@ -168,6 +171,15 @@ async function buildSessionProfileContext() {
     return "";
   }
   try {
+    const target = resolvedWorkspaceTarget(cfg, activePeerId);
+    if (target?.kind === "project") {
+      const uri = `viking://project/${target.id}/memories/overview.md`;
+      const result = await fetchJSONRes(`/api/v1/content/read?uri=${encodeURIComponent(uri)}`);
+      return result.ok && typeof result.result === "string"
+        ? `[OpenViking project ${target.id}]\n${result.result.slice(0, cfg.profileTokenBudget)}\nSource: ${uri}`
+        : "";
+    }
+    if (target?.kind === "peer") return "";
     const profile = await buildProfileBlock(
       fetchJSONRes,
       cfg.profileTokenBudget,
@@ -312,12 +324,14 @@ runHookStage({
 }, async (stage) => {
   const { input, cwd, bypassed } = stage;
   cfg = stage.cfg;
+  ({ fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId }));
   const source = input.source || "unknown";
   const newSessionId = input.session_id || "unknown";
   const effectivePeer = resolveEffectivePeerId({ cfg, cwd });
   activePeerId = effectivePeer.peerId;
   if (!bypassed && newSessionId !== "unknown") {
     const state = await loadState(newSessionId);
+    assertSessionWorkspace(state, cfg, activePeerId, workspaceBinding(cfg, activePeerId));
     await saveState({
       ...state,
       workspacePeerId: effectivePeer.source === "workspace" ? effectivePeer.peerId : "",
@@ -402,6 +416,11 @@ runHookStage({
     // committing this session (user quit and relaunched within seconds).
     const outcome = await withSessionLock(s.codexSessionId, async ({ heartbeat }) => {
       const fresh = await loadState(s.codexSessionId);
+      if ((fresh.workspaceBinding || cfg.workspaceProtocol === 2)
+          && fresh.workspaceBinding !== workspaceBinding(cfg, activePeerId)) {
+        log("sweep_skip", { codexSessionId: s.codexSessionId, reason: "different workspace binding" });
+        return null;
+      }
 
       // Re-read the marker under the lock: it may have been cleared by a
       // resume or replaced by a newer exit since listStates() sampled it.

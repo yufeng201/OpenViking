@@ -8,6 +8,7 @@
 import { statSync } from "node:fs";
 import { createInterface } from "node:readline";
 
+import { resolvedWorkspaceTarget } from "./workspace-target.mjs";
 import { buildOvHeaders } from "./ov-http.mjs";
 
 const DEFAULT_PROTOCOL_VERSION = "2025-06-18";
@@ -156,6 +157,8 @@ export function createOpenVikingMcpProxy({
   }
 
   let proxyConfig = readConfig();
+  const pinnedWorkspace = JSON.stringify(resolvedWorkspaceTarget(proxyConfig, proxyConfig.peerId));
+  let workspaceVerified = false;
   let logger = loggerFactory("mcp-proxy", proxyConfig);
   let watchedSnapshot = snapshotPaths(proxyConfig.watchedPaths);
   let sessionId = "";
@@ -219,7 +222,12 @@ export function createOpenVikingMcpProxy({
   }
 
   function reloadConfig(reason) {
-    proxyConfig = readConfig();
+    const nextConfig = readConfig();
+    if (JSON.stringify(resolvedWorkspaceTarget(nextConfig, nextConfig.peerId)) !== pinnedWorkspace) {
+      throw new Error("Workspace changed; restart this Agent session and its MCP instance");
+    }
+    proxyConfig = nextConfig;
+    workspaceVerified = false;
     logger = loggerFactory("mcp-proxy", proxyConfig);
     watchedSnapshot = snapshotPaths(proxyConfig.watchedPaths);
     log("credentials_reloaded", {
@@ -324,6 +332,18 @@ export function createOpenVikingMcpProxy({
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
+      const target = resolvedWorkspaceTarget(proxyConfig, proxyConfig.peerId);
+      if (target && !workspaceVerified) {
+        const workspaceUrl = proxyConfig.mcpUrl.replace(/\/mcp\/?$/, "/api/v1/workspace");
+        if (workspaceUrl === proxyConfig.mcpUrl) throw new Error("Workspace MCP requires a canonical /mcp endpoint");
+        const probe = await fetchImpl(workspaceUrl, { headers: headersForRequest(false), signal: controller.signal });
+        const body = await probe.json();
+        if (!probe.ok || body?.result?.capabilities?.protocol_version !== 2
+            || !body?.result?.capabilities?.target_kinds?.includes(target.kind)) {
+          throw new Error("Server does not support this workspace; MCP stopped");
+        }
+        workspaceVerified = true;
+      }
       const res = await fetchImpl(proxyConfig.mcpUrl, {
         method: "POST",
         headers: headersForRequest(includeSession),

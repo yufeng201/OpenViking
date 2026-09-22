@@ -243,7 +243,10 @@ class _OpsMixin:
 
         guard_ctx = replace(self._ctx_or_default(ctx), bypass_acl=True)
         await self._ensure_access(uri, guard_ctx, action=AclAction.MANAGE)
-        await self._ensure_access(uri, ctx, action=AclAction.WRITE)
+        # Project MANAGE already checks membership, active status and admin role.
+        # Its delete permission must not require the session author's append capability.
+        if self._safe_uri_parts(uri)[:1] != ["project"]:
+            await self._ensure_access(uri, ctx, action=AclAction.WRITE)
         path = self._uri_to_path(uri, ctx=ctx)
         target_uri = self._path_to_uri(path, ctx=ctx)
 

@@ -23,7 +23,6 @@ from openviking.service.session_service import SessionService
 from openviking_cli.session.user_id import UserIdentifier
 from openviking_cli.utils.config.memory_config import SessionAutoCommitConfig
 
-
 _REAL_DATETIME = datetime
 
 
@@ -92,6 +91,8 @@ class _FakeVikingFS:
             and parts[4] == "sessions"
         ):
             return list(self._tree_entries_by_user.get((parts[1], parts[3]), self._tree_entries))
+        if path.endswith("/project") or path.endswith("/peers"):
+            return []
         raise AssertionError(path)
 
     def read(self, path: str):
@@ -263,10 +264,7 @@ def _session_entry(session_id: str) -> dict[str, object]:
 def test_compute_next_check_at_parses_utc_z_timestamps_on_python310(monkeypatch):
     monkeypatch.setattr(auto_commit_module, "datetime", _Python310LikeDateTime)
 
-    assert (
-        compute_next_check_at("2026-06-20T10:00:00.000Z", 60)
-        == "2026-06-20T10:01:00+00:00"
-    )
+    assert compute_next_check_at("2026-06-20T10:00:00.000Z", 60) == "2026-06-20T10:01:00+00:00"
 
 
 @pytest.mark.asyncio
@@ -434,7 +432,9 @@ async def test_run_auto_commit_rechecks_idle_timeout_before_committing(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_run_auto_commit_idle_commits_full_backlog_without_persisting_keep_recent(monkeypatch):
+async def test_run_auto_commit_idle_commits_full_backlog_without_persisting_keep_recent(
+    monkeypatch,
+):
     session = _FakeAutoCommitSession(
         _FakeSessionMeta(
             auto_commit_policy={
@@ -479,10 +479,13 @@ async def test_scheduler_scans_agfs_paths_directly_without_account_user_indices(
 
     assert service.viking_fs.ls_calls == [
         ("/local", "_system"),
+        ("/local/acct_a/project", "acct_a"),
+        ("/local/acct_a/user", "acct_a"),
+        ("/local/acct_a/user/user_b/peers", "acct_a"),
         ("/local/acct_a/user", "acct_a"),
         ("/local/acct_a/user/user_b/sessions", "acct_a"),
     ]
-    assert service.viking_fs.read_calls == [
+    assert sorted(service.viking_fs.read_calls) == [
         "/local/acct_a/user/user_b/sessions/session_due/.meta.json",
         "/local/acct_a/user/user_b/sessions/session_skip/.meta.json",
     ]

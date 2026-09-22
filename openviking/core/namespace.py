@@ -7,6 +7,7 @@ from typing import Optional
 
 from openviking.core.identifiers import validate_user_id
 from openviking.core.peer_id import normalize_peer_id
+from openviking.core.workspace import WorkspaceTarget, workspace_root
 from openviking.server.identity import RequestContext, Role
 from openviking_cli.session.user_id import UserIdentifier
 from openviking_cli.utils.uri import VikingURI
@@ -14,6 +15,7 @@ from openviking_cli.utils.uri import VikingURI
 _CONTENT_TYPES_BY_SCOPE = {
     "user": {"memories": "memory", "resources": "resource", "skills": "skill"},
     "agent": {"skills": "skill"},
+    "project": {"memories": "memory", "resources": "resource"},
 }
 _PEER_CONTENT_SEGMENTS = frozenset({"memories", "resources"})
 _USER_RELATIVE_ROOT_SEGMENTS = frozenset({"peers", "privacy", "sessions"})
@@ -32,6 +34,7 @@ class ResolvedNamespace:
     scope: str
     owner_user_id: Optional[str] = None
     is_container: bool = False
+    owner_project_id: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -115,6 +118,8 @@ def _content_segment_index(parts: tuple[str, ...]) -> Optional[int]:
     """Return the content segment for a supported namespace shape."""
     if len(parts) >= 2 and parts[:2] == ("agent", "skills"):
         return 1
+    if len(parts) >= 3 and parts[0] == "project" and parts[2] in _CONTENT_TYPES_BY_SCOPE["project"]:
+        return 2
     if len(parts) < 2 or parts[0] != "user":
         return None
     if len(parts) >= 5 and parts[2] == "peers" and parts[4] in _PEER_CONTENT_SEGMENTS:
@@ -157,7 +162,7 @@ def user_space_fragment(ctx: RequestContext) -> str:
 
 
 def canonical_session_root(ctx: RequestContext) -> str:
-    return f"{canonical_user_root(ctx)}/sessions"
+    return f"{workspace_root(ctx)}/sessions"
 
 
 def canonical_session_uri(ctx: RequestContext, session_id: Optional[str] = None) -> str:
@@ -171,13 +176,17 @@ def is_session_uri(uri: str) -> bool:
     parts = uri_parts(uri)
     if parts[:1] == ["session"]:
         return True
-    return len(parts) >= 3 and parts[0] == "user" and parts[2] == "sessions"
+    return (len(parts) >= 3 and parts[0] in {"user", "project"} and parts[2] == "sessions") or (
+        len(parts) >= 5 and parts[0] == "user" and parts[2] == "peers" and parts[4] == "sessions"
+    )
 
 
 AGENT_SKILLS_ROOT = "viking://agent/skills"
 
 
 def visible_roots(ctx: RequestContext) -> list[str]:
+    if ctx.workspace_target:
+        return ["viking://resources", workspace_root(ctx)]
     return [
         "viking://resources",
         "viking://agent",
@@ -231,6 +240,14 @@ def resolve_uri(
         return ResolvedNamespace(uri="viking://", scope="", is_container=True)
 
     scope = parts[0]
+    if scope == "project":
+        if len(parts) < 2:
+            return ResolvedNamespace(uri="viking://project", scope=scope, is_container=True)
+        try:
+            target = WorkspaceTarget("project", parts[1])
+        except ValueError as exc:
+            raise NamespaceShapeError(str(exc)) from exc
+        return ResolvedNamespace(uri=canonical_uri, scope=scope, owner_project_id=target.owner_id)
     if scope == "user":
         return _resolve_user_uri(parts)
     if scope == "agent":
@@ -315,6 +332,12 @@ def resolve_current_user_uri(uri: str, ctx: RequestContext) -> str:
 
 
 def is_accessible(uri: str, ctx: RequestContext) -> bool:
+    if ctx.workspace_target:
+        parts = uri_parts(uri)
+        if parts and parts[0] in {"user", "project", "agent"}:
+            root = ctx.workspace_target.root
+            if uri.rstrip("/") != root and not uri.startswith(root + "/"):
+                return False
     if getattr(ctx.role, "value", ctx.role) == "root":
         return True
 
@@ -325,6 +348,8 @@ def is_accessible(uri: str, ctx: RequestContext) -> bool:
 
     if target.scope in {"", "resources", "agent", "temp", "queue"}:
         return True
+    if target.scope == "project":
+        return target.owner_project_id in ctx.project_ids
     if target.scope == "upload":
         return False
     if target.scope == "user":
@@ -353,6 +378,7 @@ def is_content_root_uri(
         and len(parts) == classification.content_index + 1
     )
 
+
 def _validate_peer_id_segments(parts: list[str]) -> None:
     if len(parts) >= 4 and parts[0] == "user" and parts[2] == "peers":
         _require_peer_id_segment(parts[3])
@@ -379,6 +405,7 @@ def owner_fields_for_uri(
     return {
         "uri": resolved.uri,
         "owner_user_id": resolved.owner_user_id,
+        **({"owner_project_id": resolved.owner_project_id} if resolved.owner_project_id else {}),
     }
 
 

@@ -27,6 +27,7 @@ import { createLogger } from "./debug-log.mjs";
 import { catchUpTurns, hasCaptureKeyword, makeFetchJSON } from "./ov-session.mjs";
 import { clearEnded, loadState, saveState, withSessionLock } from "./session-state.mjs";
 import { runHookStage } from "./shared/agent-hook-runtime.mjs";
+import { workspaceBinding } from "./shared/workspace-binding.mjs";
 import { maybeDetach, readHookStdin } from "./shared/async-writer.mjs";
 import { resolveEffectivePeerId } from "./shared/workspace-peer.mjs";
 
@@ -43,7 +44,7 @@ const HOOK_STARTED_AT = (() => {
   return Number.isFinite(inherited) && inherited > 0 ? inherited : Date.now();
 })();
 
-const { fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId });
+let { fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId });
 
 function output(obj) {
   process.stdout.write(JSON.stringify(obj) + "\n");
@@ -138,6 +139,7 @@ async function capture(sessionId, transcriptPath, cwd, heartbeat) {
 
 async function main(stage) {
   cfg = stage.cfg;
+  ({ fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId }));
   const sessionId = stage.input.session_id || "unknown";
   const transcriptPath = stage.input.transcript_path || null;
 
@@ -169,7 +171,6 @@ async function start() {
   // Async write mode returns a no-op response immediately; worker stdout is
   // intentionally discarded, so appended-count systemMessage is sync-only.
   process.env.OPENVIKING_HOOK_STARTED_AT = String(HOOK_STARTED_AT);
-  if (await maybeDetach(cfg, { approve: () => output({}) })) return;
 
   await runHookStage({
     loadConfig,
@@ -177,7 +178,16 @@ async function start() {
     gates: { enabled: (reloaded) => reloaded.autoCapture },
     envelope: noop,
     onSkip: (reason) => log("skip", { stage: "init", reason }),
-  }, main);
+  }, async (stage) => {
+    const peer = resolveEffectivePeerId({ cfg: stage.cfg, cwd: stage.cwd }).peerId;
+    const binding = workspaceBinding(stage.cfg, peer);
+    const inherited = process.env.OPENVIKING_WORKSPACE_BINDING;
+    if (inherited && inherited !== binding) throw new Error("Workspace changed before detached capture; start a new session");
+    if (binding) process.env.OPENVIKING_WORKSPACE_BINDING = binding;
+    process.env.OPENVIKING_HOOK_STDIN_CACHE = stage.raw;
+    if (await maybeDetach(stage.cfg, { approve: () => output({}) })) return;
+    return main(stage);
+  });
 }
 
 start().catch((err) => { logError("uncaught", err); noop(); });

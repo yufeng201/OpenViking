@@ -16,7 +16,9 @@
 import { join } from "node:path";
 import { loadConfig } from "./config.mjs";
 import { createLogger } from "./debug-log.mjs";
-import { getStateDir, deriveOvSessionId } from "./session-state.mjs";
+import { assertSessionWorkspace } from "./shared/workspace-target.mjs";
+import { workspaceBinding } from "./shared/workspace-binding.mjs";
+import { getStateDir, deriveOvSessionId, loadState } from "./session-state.mjs";
 import { createCodexCompressor } from "./host-compressor.mjs";
 import { buildRecallBlockDetailed } from "./shared/recall-core.mjs";
 import { runHookStage } from "./shared/agent-hook-runtime.mjs";
@@ -96,6 +98,10 @@ runHookStage({
 
   let userPrompt = (input.prompt || "").trim();
   const codexSessionId = typeof input.session_id === "string" ? input.session_id.trim() : "";
+  if (codexSessionId) {
+    const state = await loadState(codexSessionId);
+    assertSessionWorkspace(state, cfg, effectivePeer.peerId, workspaceBinding(cfg, effectivePeer.peerId));
+  }
   const recallSessionId = codexSessionId ? deriveOvSessionId(codexSessionId) : "";
   log("start", {
     codexSessionId: codexSessionId || null,
@@ -143,7 +149,9 @@ runHookStage({
     actorPeerId: effectivePeer.peerId, legacyPeerId: effectivePeer.legacyPeerId,
     sessionId: recallSessionId || "", runCompressor,
     localCompressorAvailable: Boolean(runCompressor),
-    digestCachePath: RECALL_DIGEST_CACHE_PATH, log,
+    digestCachePath: cfg.workspaceProtocol === 2
+      ? join(getStateDir(), `recall-digest-${workspaceBinding(cfg, effectivePeer.peerId)}.json`)
+      : RECALL_DIGEST_CACHE_PATH, log,
   });
   log("recall_complete", { stage: recalled.stage, chars: recalled.block.length });
   return recalled.block;

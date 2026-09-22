@@ -51,10 +51,11 @@ const MANIFEST_URL = new URL("../.codex-plugin/plugin.json", import.meta.url);
  * workspace file may not carry connection or credential keys, so baseUrl/apiKey
  * cannot move — loggers and fetch helpers built from the first load stay valid.
  */
-export function loadConfig(cwd = process.cwd(), { env = process.env } = {}) {
+export function loadConfig(cwd = process.cwd(), { env = process.env, workspaceOverride } = {}) {
   const config = buildPluginConfig("codex", {
     cwd,
     env,
+    workspaceOverride,
     manifestUrl: MANIFEST_URL,
     logFile: "codex-hooks.log",
   });

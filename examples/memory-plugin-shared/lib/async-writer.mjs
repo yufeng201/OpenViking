@@ -26,9 +26,13 @@ export async function maybeDetach(cfg, { approve }) {
   // Drain parent stdin so we can forward to the worker.
   let raw;
   try {
-    const chunks = [];
-    for await (const chunk of process.stdin) chunks.push(chunk);
-    raw = Buffer.concat(chunks);
+    if (process.env.OPENVIKING_HOOK_STDIN_CACHE !== undefined) {
+      raw = Buffer.from(process.env.OPENVIKING_HOOK_STDIN_CACHE);
+    } else {
+      const chunks = [];
+      for await (const chunk of process.stdin) chunks.push(chunk);
+      raw = Buffer.concat(chunks);
+    }
   } catch {
     // stdin read failed - let the synchronous path handle it.
     return false;

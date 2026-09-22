@@ -1,0 +1,30 @@
+memory_type: conventions
+description: Document explicit project interface, coding, testing and release conventions.
+  Exclude personal preferences. Extract only evidence-backed shared project knowledge.
+  Do not retain secrets or personal profiles. Preserve conflicting evidence as a candidate;
+  never silently replace a confirmed conclusion.
+directory: viking://project/{{ project_id }}/memories/conventions
+filename_template: '{{ name }}.md'
+enabled: true
+peer_enabled: false
+stage: user
+embedding_template: '{{ name }}
+
+  {{ content }}'
+fields:
+- name: name
+  type: string
+  description: Stable topic name, specific to the project module or API.
+  merge_op: immutable
+- name: content
+  type: string
+  description: Document explicit project interface, coding, testing and release conventions.
+    Exclude personal preferences. Include evidence and applicable repository/version
+    when known.
+  merge_op: patch
+- name: evidence_status
+  type: string
+  description: Exactly confirmed, conflict, or tentative. confirmed requires observed
+    evidence or an explicitly adopted decision. Use conflict for contradictions with
+    existing knowledge; tentative for unverified suggestions.
+  merge_op: immutable

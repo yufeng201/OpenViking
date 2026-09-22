@@ -1,3 +1,4 @@
+import { workspaceTargetSettings } from "./workspace-target.mjs";
 /**
  * Layered workspace configuration.
  *
@@ -179,8 +180,8 @@ function stripUnsafeOnly(value, warnings, path, depth) {
 }
 
 /**
- * Read one layer file. Every failure is a warning and an empty layer — a hook
- * must not die because a config file is odd.
+ * Read one layer file. Invalid existing settings block workspace requests,
+ * preventing a broken project configuration from falling back to personal storage.
  */
 export function readWorkspaceFile(path, { root = "", layer = "" } = {}) {
   const warnings = [];
@@ -192,14 +193,15 @@ export function readWorkspaceFile(path, { root = "", layer = "" } = {}) {
   } catch {
     return empty;
   }
+  const blocked = () => ({ ...empty, data: { workspace_protocol: 2, workspace_error: warnings.at(-1) } });
   empty.exists = true;
   if (!stat.isFile()) {
     warnings.push(`${path} is not a regular file`);
-    return empty;
+    return blocked();
   }
   if (stat.size > MAX_CONFIG_BYTES) {
     warnings.push(`${path} is larger than ${MAX_CONFIG_BYTES} bytes`);
-    return empty;
+    return blocked();
   }
   // A symlink out of the workspace would let a repository read a file the user
   // never meant to expose to it.
@@ -208,11 +210,11 @@ export function readWorkspaceFile(path, { root = "", layer = "" } = {}) {
       const rel = relative(realpathSync(root), realpathSync(path));
       if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
         warnings.push(`${path} resolves outside the workspace`);
-        return empty;
+        return blocked();
       }
     } catch {
       warnings.push(`${path} could not be resolved`);
-      return empty;
+      return blocked();
     }
   }
 
@@ -222,15 +224,16 @@ export function readWorkspaceFile(path, { root = "", layer = "" } = {}) {
     parsed = JSON.parse(readFileSync(path, "utf-8"));
   } catch (err) {
     warnings.push(`${path} is not valid JSON (${err?.message || err})`);
-    return empty;
+    return blocked();
   }
   if (!isPlainObject(parsed)) {
     warnings.push(`${path} must contain a JSON object`);
-    return empty;
+    return blocked();
   }
-  if (parsed.version !== CONFIG_VERSION) {
-    warnings.push(`${path} declares version ${JSON.stringify(parsed.version)}; this client understands ${CONFIG_VERSION}`);
-    return empty;
+  if (parsed.version !== CONFIG_VERSION && parsed.version !== 2) {
+    const message = `${path} declares unsupported workspace version ${JSON.stringify(parsed.version)}`;
+    warnings.push(message);
+    return { ...empty, exists: true, data: { workspace_protocol: 2, workspace_error: message } };
   }
 
   const { version, $schema, min_client_version: minClientVersion, ...rest } = parsed;
@@ -241,6 +244,7 @@ export function readWorkspaceFile(path, { root = "", layer = "" } = {}) {
     warnings.push(`${path} is nested too deeply (${err?.message || err})`);
     return empty;
   }
+  if (version === 2) data.workspace_protocol = 2;
   if (minClientVersion) data.min_client_version = String(minClientVersion);
 
   return { path, layer, exists: true, data, warnings };
@@ -379,7 +383,7 @@ export function normalizeWorkspaceConfig(value, warnings = []) {
  * win — keeps working unchanged.
  */
 export function projectWorkspaceSettings(value) {
-  const settings = {};
+  const settings = workspaceTargetSettings(value);
   for (const [path, knob] of Object.entries(KNOB_MAP)) {
     const raw = get(value, path);
     if (raw !== undefined) settings[knob] = raw;
@@ -400,11 +404,13 @@ export function workspaceConfigPaths(root) {
  * The two workspace-file layers, lowest precedence first. Callers stack the
  * registry above these and the ovcli.conf plugin section below them.
  */
-export function loadWorkspaceLayers(root, { clientVersion = "" } = {}) {
+export function loadWorkspaceLayers(root, { clientVersion = "", workspaceOverride } = {}) {
   const warnings = [];
   const layers = [];
   for (const { layer, path } of workspaceConfigPaths(root)) {
-    const file = readWorkspaceFile(path, { root, layer });
+    const file = workspaceOverride?.path === path
+      ? { data: { ...workspaceOverride.data, workspace_protocol: 2 }, warnings: [] }
+      : readWorkspaceFile(path, { root, layer });
     warnings.push(...file.warnings);
     if (!file.data) continue;
     const { min_client_version: declared, ...data } = file.data;

@@ -307,9 +307,21 @@ class DeletionService:
             scheduler = self._service.watch_scheduler
             if scheduler is not None:
                 await run_to_completion(lambda: scheduler.delete_tasks(account_id, user_id))
-            await run_to_completion(lambda: self._cancel_tasks(account_id, user_id))
-            if user_id is not None:
-                await run_to_completion(lambda: tracker.delete_user_tasks(account_id, user_id))
+            if user_id is None:
+                await run_to_completion(lambda: self._cancel_tasks(account_id, None))
+            else:
+                # Peer buckets are personal assets; project buckets survive departure.
+                personal_owners = {user_id}
+                for task in await tracker.list_tasks(account_id=account_id, limit=None):
+                    if task.user_id and task.user_id.startswith(f"~peer~{user_id}~"):
+                        personal_owners.add(task.user_id)
+                for personal_owner in personal_owners:
+                    await run_to_completion(
+                        lambda owner=personal_owner: self._cancel_tasks(account_id, owner)
+                    )
+                    await run_to_completion(
+                        lambda owner=personal_owner: tracker.delete_user_tasks(account_id, owner)
+                    )
 
             vectors = self._service.viking_fs.vector_store
             if vectors is not None:

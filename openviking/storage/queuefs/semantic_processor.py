@@ -197,12 +197,24 @@ class SemanticProcessor(DequeueHandlerBase):
 
     @staticmethod
     def _ctx_from_semantic_msg(msg: SemanticMsg) -> RequestContext:
-        return RequestContext(
+        ctx = RequestContext(
             user=UserIdentifier(msg.account_id, msg.user_id),
             role=Role(msg.role),
             group_ids=tuple(msg.group_ids),
             bypass_acl=True,
         )
+
+        parts = (msg.target_uri or msg.uri).removeprefix("viking://").split("/")
+        if len(parts) >= 2 and parts[0] == "project":
+            from openviking.core.workspace import WorkspaceTarget
+
+            ctx.workspace_target = WorkspaceTarget("project", parts[1])
+            ctx.project_ids = (parts[1],)
+            ctx.workspace_worker = True
+            ctx.role = Role.USER
+            if len(parts) >= 4 and parts[2] == "sessions":
+                ctx.workspace_session_uri = "viking://" + "/".join(parts[:4])
+        return ctx
 
     def _detect_file_type(self, file_name: str) -> str:
         """

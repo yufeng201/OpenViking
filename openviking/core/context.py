@@ -82,6 +82,7 @@ class Context:
         owner_space: Optional[str] = None,
         md5: Optional[str] = None,
         id: Optional[str] = None,
+        owner_project_id: Optional[str] = None,
     ):
         """
         Initialize a Context object.
@@ -110,6 +111,9 @@ class Context:
         self.owner_user_id = (
             owner_user_id if owner_user_id is not None else owner_fields["owner_user_id"]
         )
+        self.owner_project_id = owner_fields.get("owner_project_id")
+        if self.owner_project_id:
+            self.owner_user_id = None
         self.owner_space = owner_space or owner_fields["owner_user_id"] or ""
         # md5 of the final stored bytes for this URI; None/"" means unknown (old
         # records or non-file records), and incremental diff falls back to reading
@@ -120,6 +124,14 @@ class Context:
 
     def _derive_category(self) -> str:
         """Derive category from URI using substring matching."""
+        if self.uri.startswith("viking://project/"):
+            parts = self.uri.removeprefix("viking://").split("/")
+            if len(parts) >= 4 and parts[2] == "memories":
+                return (
+                    parts[3]
+                    if parts[3] in {"architecture", "conventions", "decisions", "experiences"}
+                    else ""
+                )
         if "/patterns" in self.uri:
             return "patterns"
         elif "/cases" in self.uri:
@@ -172,6 +184,7 @@ class Context:
             "session_id": self.session_id,
             "account_id": self.account_id,
             "owner_user_id": self.owner_user_id,
+            "owner_project_id": self.owner_project_id,
             "owner_space": self.owner_space,
         }
         if self.level is not None:
@@ -237,6 +250,7 @@ class Context:
             user=user_obj,
             account_id=data.get("account_id"),
             owner_user_id=data.get("owner_user_id"),
+            owner_project_id=data.get("owner_project_id"),
             owner_space=data.get("owner_space"),
             md5=data.get("md5"),
         )

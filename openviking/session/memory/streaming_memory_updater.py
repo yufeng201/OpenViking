@@ -90,6 +90,7 @@ class StreamingMemoryUpdaterKey:
 
     account_id: str
     user_id: str
+    workspace: tuple = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -497,6 +498,16 @@ class StreamingMemoryUpdater:
         isolation_handler = _make_isolation_handler(request, extract_context)
         async with self._apply_lock:
             viking_fs = safe_get_viking_fs()
+            if request.ctx.workspace_target and request.ctx.workspace_target.kind == "project":
+                from openviking.session.memory.project_candidates import retain_project_candidates
+
+                await retain_project_candidates(
+                    operations,
+                    archive_uri=request.metadata["archive_uri"],
+                    messages=messages,
+                    ctx=request.ctx,
+                    fs=viking_fs,
+                )
             lease = await _acquire_stable_operation_lease(
                 operations,
                 viking_fs,
@@ -1319,6 +1330,10 @@ def _inherit_source_metadata_to_merged_operations(
         return
 
     for merged_op in merged_operations or []:
+        matched = [op for uri in merged_op.uris for op in input_by_uri.get(uri, [])]
+        merged_op.project_sources = [
+            source for op in (matched or input_operations) for source in op.project_sources
+        ]
         if _operation_source_extraction_ids(merged_op):
             continue
         matched_inputs: list[ResolvedOperation] = []
@@ -1467,6 +1482,13 @@ def attach_source_to_request_operations(request: MemoryUpdateRequest) -> None:
     if source is None:
         return
     for op in list(getattr(request.operations, "upsert_operations", []) or []):
+        if (
+            request.ctx
+            and request.ctx.workspace_target
+            and request.ctx.workspace_target.kind == "project"
+        ):
+            op.source = source
+            op.project_sources = [source]
         if getattr(op, "source", None) is None:
             op.source = source
         source_extraction_id = getattr(op.source, "extraction_id", None)
@@ -1491,6 +1513,8 @@ def memory_operation_source_from_request(
         task_id=_optional_str(metadata.get("task_id")),
         trace_id=_optional_str(metadata.get("trace_id")),
         extracted_at=_optional_str(metadata.get("extracted_at")),
+        contributor_id=request.ctx.user.user_id if request.ctx else None,
+        source_message_ids=[message.id for message in request.messages if message.id],
     )
 
 
@@ -2249,4 +2273,10 @@ def make_streaming_memory_updater_key(*, request_context: Any) -> StreamingMemor
         or "default"
     )
     user_id = getattr(request_context, "user_id", None) or getattr(user, "user_id", None) or ""
+    if getattr(request_context, "workspace_target", None):
+        from openviking.core.workspace import workspace_key
+
+        return StreamingMemoryUpdaterKey(
+            account_id=str(account_id), user_id="", workspace=workspace_key(request_context)
+        )
     return StreamingMemoryUpdaterKey(account_id=str(account_id), user_id=str(user_id))

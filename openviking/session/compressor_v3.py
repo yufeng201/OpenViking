@@ -421,7 +421,13 @@ class SessionCompressorV3:
         event_search_tags: Optional[List[str]] = None,
         peer_memory_enabled: bool = True,
     ):
-        if not agent_evolution_enabled:
+        if ctx and ctx.workspace_target:
+            from openviking.session.memory.workspace_registry import workspace_registry
+
+            allowed_memory_types = set(workspace_registry(ctx).list_names())
+            agent_evolution_enabled = False
+            peer_memory_enabled = False
+        if not agent_evolution_enabled and not (ctx and ctx.workspace_target):
             effective_types = (
                 set(get_default_registry().list_names(include_disabled=False))
                 if allowed_memory_types is None
@@ -430,9 +436,13 @@ class SessionCompressorV3:
             allowed_memory_types = effective_types - AGENT_EVOLUTION_MEMORY_TYPES
 
         message_list = list(messages)
-        fast_path_case = _training_case_from_first_message(
-            message_list,
-            allowed_memory_types,
+        fast_path_case = (
+            None
+            if ctx and ctx.workspace_target
+            else _training_case_from_first_message(
+                message_list,
+                allowed_memory_types,
+            )
         )
         try:
             if fast_path_case is not None:
@@ -465,7 +475,9 @@ class SessionCompressorV3:
             cases_allowed = (
                 allowed_memory_types is None or _CASES_MEMORY_TYPE in allowed_memory_types
             )
-            session_skills_enabled = self._session_skill_extraction_enabled()
+            session_skills_enabled = self._session_skill_extraction_enabled() and not (
+                ctx and ctx.workspace_target
+            )
             if (
                 agent_evolution_enabled
                 and cases_allowed
@@ -680,9 +692,14 @@ class SessionCompressorV3:
 
         from openviking.session.memory.account_templates import resolve_account_memory_registry
 
-        registry = await resolve_account_memory_registry(
-            viking_fs, ctx.account_id, get_default_registry()
-        )
+        if ctx.workspace_target:
+            from openviking.session.memory.workspace_registry import workspace_registry
+
+            registry = workspace_registry(ctx)
+        else:
+            registry = await resolve_account_memory_registry(
+                viking_fs, ctx.account_id, get_default_registry()
+            )
         if allow_self_memory:
             await registry.initialize_memory_files(
                 ctx,
@@ -724,6 +741,12 @@ class SessionCompressorV3:
             tracer.info("[v3_patch_merge] No memory operations generated")
             return _V3ExtractionResult()
 
+        if ctx.workspace_target and ctx.workspace_target.kind == "project":
+            from openviking.session.memory.project_candidates import retain_project_candidates
+
+            await retain_project_candidates(
+                operations, archive_uri=archive_uri, messages=messages, ctx=ctx, fs=viking_fs
+            )
         # Attach caller-provided custom scalar tags to event memories so they
         # ride the same first write into the vector index (人填标量).
         _apply_event_search_tags(operations, event_search_tags)

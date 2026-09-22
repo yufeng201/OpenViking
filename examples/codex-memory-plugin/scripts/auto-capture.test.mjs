@@ -863,3 +863,35 @@ test("capture filters rewrite and drop turns without stranding the cursor", asyn
     await rm(stateDir, { recursive: true, force: true });
   }
 });
+
+test("project capture uses payload repository and refuses to move an existing session", async () => {
+  const root = await mkdtemp(join(tmpdir(), "ov-project-capture-"));
+  try {
+    const repo = join(root, "repo");
+    await mkdir(join(repo, ".git"), { recursive: true });
+    await mkdir(join(repo, ".openviking"));
+    const config = join(repo, ".openviking", "config.json");
+    await writeFile(config, JSON.stringify({ version: 2, project_id: "orders" }));
+    const transcript = join(root, "transcript.jsonl");
+    await writeFile(transcript, JSON.stringify({ payload: { message: { role: "user", content: "The confirmed API is POST /orders" } } }) + "\n");
+    const seen = [];
+    await withMockOpenViking(async (req, res) => {
+      seen.push({ path: req.url, method: req.method, project: req.headers["x-openviking-project"], peer: req.headers["x-openviking-actor-peer"] });
+      if (req.method === "POST") await readRequestBody(req);
+      writeJson(res, { status: "ok", result: req.url === "/api/v1/workspace"
+        ? { capabilities: { protocol_version: 2, target_kinds: ["project"] } }
+        : { pending_tokens: 0, added: 1 } });
+    }, async (baseUrl) => {
+      const env = { OPENVIKING_URL: baseUrl, OPENVIKING_CREDENTIAL_SOURCE: "env", OPENVIKING_API_KEY: "test", OPENVIKING_CODEX_STATE_DIR: join(root, "state"), OPENVIKING_CONFIG_FILE: join(root, "missing.conf"), OPENVIKING_CLI_CONFIG_FILE: join(root, "missing-cli.conf"), OPENVIKING_WRITE_PATH_ASYNC: "0", OPENVIKING_AUTO_CAPTURE: "1" };
+      const input = { cwd: repo, session_id: "project-session", transcript_path: transcript };
+      await runAutoCapture(input, env);
+      const writes = seen.filter((r) => r.method === "POST");
+      assert.ok(writes.some((r) => r.path.endsWith("/messages/batch")), JSON.stringify(seen));
+      assert.ok(writes.every((r) => r.project === "orders" && !r.peer));
+      const before = writes.length;
+      await writeFile(config, JSON.stringify({ version: 2, project_id: "payments" }));
+      await runAutoCapture(input, env);
+      assert.equal(seen.filter((r) => r.method === "POST").length, before);
+    });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

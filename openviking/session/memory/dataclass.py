@@ -168,6 +168,8 @@ class MemoryOperationSource(BaseModel):
     task_id: Optional[str] = None
     trace_id: Optional[str] = None
     extracted_at: Optional[str] = None
+    contributor_id: Optional[str] = None
+    source_message_ids: List[str] = Field(default_factory=list)
 
 
 class MemoryOperationSkipCode(str, Enum):
@@ -345,6 +347,7 @@ class ResolvedOperation(BaseModel):
     uris: List[str]
     page_id: Optional[int] = None  # Temporary page_id for link resolution (not persisted)
     source: Optional[MemoryOperationSource] = None
+    project_sources: List[MemoryOperationSource] = Field(default_factory=list, exclude=True)
     # Runtime-only resolution decision. It is deliberately excluded from model
     # serialization so it cannot enter later LLM merge prompts or memory files.
     resolution_skip: Optional[MemoryOperationSkip] = Field(default=None, exclude=True)

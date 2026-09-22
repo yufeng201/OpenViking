@@ -54,6 +54,17 @@ def default_target_directories(
     context_type: Optional[ContextType] = None,
 ) -> List[str]:
     """Return default retrieval directories for a user context."""
+    if ctx and ctx.workspace_target:
+        from openviking.core.workspace import workspace_root
+
+        root = workspace_root(ctx)
+        if context_type == ContextType.MEMORY:
+            return [f"{root}/memories"]
+        if context_type == ContextType.RESOURCE:
+            return [f"{root}/resources"]
+        if context_type == ContextType.SKILL:
+            return []
+        return [f"{root}/memories", f"{root}/resources"]
     if not ctx or ctx.role == Role.ROOT:
         return []
 

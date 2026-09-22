@@ -175,6 +175,29 @@ class _AccessMixin:
             else:
                 valid.append(uri)
 
+        from openviking.storage.workspace_access import project_access
+
+        ordinary = []
+        for uri in valid:
+            if real_ctx.workspace_target and action != AclAction.READ:
+                parts = self._safe_uri_parts(uri)
+                root = real_ctx.workspace_target.root
+                if (
+                    parts
+                    and parts[0] in {"resources", "user", "project", "agent"}
+                    and not (uri.rstrip("/") == root or uri.startswith(root + "/"))
+                ):
+                    result[uri] = False
+                    continue
+            if real_ctx.workspace_target and not namespace_is_accessible(uri, real_ctx):
+                result[uri] = False
+                continue
+            allowed = await project_access(self._async_agfs, uri, real_ctx, action)
+            if allowed is None:
+                ordinary.append(uri)
+            else:
+                result[uri] = allowed
+        valid = ordinary
         acl_manager = self.acl_manager
         if acl_manager is None or not await acl_manager.is_enabled(real_ctx.account_id):
             result.update({uri: self._is_accessible(uri, real_ctx) for uri in valid})
@@ -379,6 +402,10 @@ class _AccessMixin:
 
     def _ensure_identity_not_deleting(self, ctx: RequestContext) -> None:
         guard = getattr(self, "_deletion_guard", None)
+        if ctx.workspace_worker and ctx.workspace_target and ctx.workspace_target.kind == "project":
+            if guard is not None and guard(ctx.account_id, ""):
+                raise FailedPreconditionError("Account deletion is in progress")
+            return
         if ctx.role != Role.ROOT and guard is not None and guard(ctx.account_id, ctx.user.user_id):
             raise FailedPreconditionError("Identity deletion is in progress")
 
@@ -1007,6 +1034,9 @@ class _AccessMixin:
     def _is_accessible(self, uri: str, ctx: RequestContext) -> bool:
         """Check whether a URI is visible/accessible under current request context."""
         parts = self._safe_uri_parts(uri)
+        if ctx.workspace_target and parts and parts[0] in {"user", "project", "agent"}:
+            if not namespace_is_accessible(uri, ctx):
+                return False
         if ctx.role == Role.ROOT:
             return True
         if is_hidden_by_actor_peer_view(uri, ctx):

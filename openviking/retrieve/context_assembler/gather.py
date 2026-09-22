@@ -84,6 +84,10 @@ def _extract(result: Any, bucket: str) -> List[Any]:
 
 
 def memory_target_roots(ctx: RequestContext) -> List[str]:
+    if ctx.workspace_target:
+        from openviking.core.workspace import memory_root
+
+        return [memory_root(ctx)]
     user_root = canonical_user_root(ctx)
     targets = [f"{user_root}/memories"]
     if ctx.actor_peer_id:

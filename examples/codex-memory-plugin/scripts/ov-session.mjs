@@ -1,3 +1,5 @@
+import { assertSessionWorkspace } from "./shared/workspace-target.mjs";
+import { workspaceBinding } from "./shared/workspace-binding.mjs";
 /**
  * Shared OpenViking HTTP + transcript helpers for the Codex capture hooks.
  *
@@ -109,6 +111,8 @@ export async function catchUpTurns({
   heartbeat,
   shouldSend,
 }) {
+  assertSessionWorkspace(state, cfg, activePeerId, workspaceBinding(cfg, activePeerId));
+  await saveState(state);
   // Remember the rollout path so the SessionStart sweep can catch up turns for
   // a session whose Stop/SessionEnd workers never ran.
   if (transcriptPath) state.transcriptPath = transcriptPath;

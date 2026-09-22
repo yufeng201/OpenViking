@@ -98,9 +98,9 @@ export function loadPluginSettings(harness, env = process.env, options = {}) {
  * callers still need to know a value came from ovcli.conf rather than ov.conf.
  */
 export function resolveSettings(harness, options = {}) {
-  const { env = process.env, cwd = "", legacy = {}, clientVersion = "", cliFile = null } = options;
+  const { env = process.env, cwd = "", legacy = {}, clientVersion = "", cliFile = null, workspaceOverride } = options;
   const key = harnessKey(harness);
-  const plugin = loadPluginSettings(key, env, { cwd, clientVersion, cliFile });
+  const plugin = loadPluginSettings(key, env, { cwd, clientVersion, cliFile, workspaceOverride });
   const { settings, configured, sources } = resolveKnobs({
     harness: key,
     layers: [
@@ -119,13 +119,13 @@ export function resolveSettings(harness, options = {}) {
  * level, before the payload on stdin has said which directory the session is
  * actually in — the caller resolves this again once it knows.
  */
-export function resolveWorkspaceSettings(cwd, env = process.env, { clientVersion = "" } = {}) {
+export function resolveWorkspaceSettings(cwd, env = process.env, { clientVersion = "", workspaceOverride } = {}) {
   const empty = { settings: {}, root: "", provenance: {}, warnings: [], announced: [] };
   try {
-    const { root } = findWorkspaceRoot(cwd, env);
+    const root = workspaceOverride?.root || findWorkspaceRoot(cwd, env).root;
     if (!root) return empty;
 
-    const { layers, warnings } = loadWorkspaceLayers(root, { clientVersion });
+    const { layers, warnings } = loadWorkspaceLayers(root, { clientVersion, workspaceOverride });
     // The identity is what makes the registry's negative evidence work: without
     // it a directory reused by a different repository inherits the old peer.
     const identity = resolveWorkspaceIdentity({ cwd, env });
@@ -196,6 +196,7 @@ export function buildPluginConfig(harness, {
   logFile = "",
   rootKeyFallback = false,
   deriveEffectivePeer = false,
+  workspaceOverride,
 } = {}) {
   const name = String(harness || "");
   const key = harnessKey(name);
@@ -210,6 +211,7 @@ export function buildPluginConfig(harness, {
     legacy: legacy || ovConfSection(files.ovFile, key),
     cliFile: files.cliFile,
     clientVersion,
+    workspaceOverride,
   });
   const connection = resolveConnection(key, { env, files, hostInput, rootKeyFallback });
   const { baseUrl, account, user } = connection;
@@ -270,6 +272,9 @@ export function buildPluginConfig(harness, {
     userId: user,
     requestTimeoutMs: timeoutMs,
   };
+  if (config.workspaceProtocol === 2 && name !== "codex") {
+    config.workspaceError = "Workspace capture requires the Codex integration; this Agent is not yet adapted";
+  }
   for (const knob of SEND_ONLY_WHEN_CONFIGURED) {
     config[`${knob.name}Configured`] = configured.has(knob.name);
   }

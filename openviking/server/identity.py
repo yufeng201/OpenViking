@@ -9,6 +9,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, List, Optional
 
 if TYPE_CHECKING:
+    from openviking.core.workspace import WorkspaceTarget
     from openviking.storage.viking_fs import VikingFS
 
 from openviking_cli.session.user_id import UserIdentifier
@@ -111,6 +112,12 @@ class RequestContext:
     # Trusted background workers may maintain derived content without replaying
     # the triggering user's resource ACL. Tenant and namespace checks still apply.
     bypass_acl: bool = False
+    workspace_target: Optional[WorkspaceTarget] = None
+    # Server-resolved project visibility; never accepted from client payloads.
+    project_ids: tuple[str, ...] = ()
+    # Internal Session service capability. HTTP context builders never populate it.
+    workspace_session_uri: Optional[str] = None
+    workspace_worker: bool = False
 
     @property
     def account_id(self) -> str:

@@ -584,6 +584,9 @@ def create_app(
         logger.info("Bot API proxy disabled (use --with-bot to enable)")
 
     # Register routers
+    from openviking.server.routers.projects import router as projects_router
+
+    app.include_router(projects_router)
     app.include_router(system_router)
     app.include_router(acl_router)
     app.include_router(admin_router)

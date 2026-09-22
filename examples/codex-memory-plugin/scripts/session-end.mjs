@@ -32,6 +32,7 @@ import {
   withSessionLock,
 } from "./session-state.mjs";
 import { runHookStage } from "./shared/agent-hook-runtime.mjs";
+import { workspaceBinding } from "./shared/workspace-binding.mjs";
 import { maybeDetach, readHookStdin } from "./shared/async-writer.mjs";
 import { resolveEffectivePeerId } from "./shared/workspace-peer.mjs";
 
@@ -44,7 +45,7 @@ const LOCK_WAIT_MS = (() => {
   return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 120_000;
 })();
 
-const { fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId });
+let { fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId });
 
 function output(obj) {
   process.stdout.write(JSON.stringify(obj) + "\n");
@@ -154,7 +155,13 @@ runHookStage({
   onSkip: (reason) => log("skip", { stage: "init", reason }),
 }, async ({ cfg: reloaded, input, raw, cwd, sessionId, emit }) => {
   cfg = reloaded;
+  ({ fetchJSONRes, fetchJSON } = makeFetchJSON(cfg, { getActorPeerId: () => activePeerId }));
   const transcriptPath = input.transcript_path || null;
+  const targetPeer = resolveEffectivePeerId({ cfg, cwd }).peerId;
+  const binding = workspaceBinding(cfg, targetPeer);
+  const inheritedBinding = process.env.OPENVIKING_WORKSPACE_BINDING;
+  if (inheritedBinding && inheritedBinding !== binding) throw new Error("Workspace changed before detached commit; start a new session");
+  if (binding) process.env.OPENVIKING_WORKSPACE_BINDING = binding;
 
   if (!sessionId) {
     log("skip", { stage: "init", reason: "no session_id" });
