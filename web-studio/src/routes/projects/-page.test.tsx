@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '#/i18n'
 import i18n from '#/i18n'
-import { ProjectsPage } from './-projects-page'
+import { ProjectEditor } from './-project-editor'
 const mocks = vi.hoisted(() => ({
   role: 'admin',
   request: vi.fn(),
@@ -59,14 +59,21 @@ function mount() {
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <ProjectsPage />
+      <ProjectEditor
+        project={{
+          project_id: 'orders',
+          name: '订单平台',
+          description: 'Shared',
+          group_id: 'team',
+          status: 'active',
+        }}
+      />
     </QueryClientProvider>,
   )
 }
 it('shows project name, filters existing members and provides repository config', async () => {
   mount()
   const user = userEvent.setup()
-  await user.click(await screen.findByRole('button', { name: /订单平台/ }))
   await user.click(screen.getByRole('button', { name: '项目成员' }))
   expect(await screen.findByRole('option', { name: 'bob' })).toBeTruthy()
   expect(screen.queryByRole('option', { name: 'alice' })).toBeNull()
@@ -79,7 +86,6 @@ it('shows project name, filters existing members and provides repository config'
 it('does not expose membership management or account directory APIs to normal users', async () => {
   mocks.role = 'user'
   mount()
-  await userEvent.click(await screen.findByRole('button', { name: /订单平台/ }))
   expect(screen.queryByRole('button', { name: '新建项目' })).toBeNull()
   expect(screen.queryByRole('button', { name: '项目成员' })).toBeNull()
   expect(mocks.get).not.toHaveBeenCalled()

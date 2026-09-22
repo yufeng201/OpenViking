@@ -160,6 +160,18 @@ const activity = {
       submitted: 'Resource add task submitted',
     },
     projects: {
+      all: 'All statuses',
+      statusFilter: 'Project status',
+      total: '{{count}} projects',
+      noDescription: 'No description yet',
+      previous: 'Previous',
+      next: 'Next',
+      page: '{{page}} / {{pages}}',
+      pagination: 'Project pagination',
+      back: 'Back to projects',
+      unavailable: 'Project does not exist or you do not have access.',
+      retry: 'Retry',
+
       search: 'Search projects',
       empty: 'No matching projects',
       selectHint: 'Select a project to view its settings and connection guide.',

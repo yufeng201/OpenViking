@@ -152,6 +152,18 @@ const activity = {
       submitted: '资源添加任务已提交',
     },
     projects: {
+      all: '全部状态',
+      statusFilter: '项目状态',
+      total: '共 {{count}} 个项目',
+      noDescription: '暂无项目说明',
+      previous: '上一页',
+      next: '下一页',
+      page: '第 {{page}} / {{pages}} 页',
+      pagination: '项目分页',
+      back: '返回项目列表',
+      unavailable: '项目不存在或你没有访问权限。',
+      retry: '重试',
+
       search: '搜索项目名称或 ID',
       empty: '暂无匹配的项目',
       selectHint: '选择一个项目，查看项目信息、成员与接入指南。',

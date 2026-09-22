@@ -26,8 +26,10 @@ import { Route as AgentExperienceRouteRouteImport } from './routes/agent-experie
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VikingbotIndexRouteImport } from './routes/vikingbot/index'
 import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
+import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as CompileIndexRouteImport } from './routes/compile/index'
 import { Route as AgentExperienceIndexRouteImport } from './routes/agent-experience/index'
+import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
 import { Route as OauthVerifyRouteImport } from './routes/oauth/verify'
 import { Route as OauthConsentRouteImport } from './routes/oauth/consent'
 import { Route as CompileNewRouteImport } from './routes/compile/new'
@@ -119,6 +121,11 @@ const SessionsIndexRoute = SessionsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SessionsRouteRoute,
 } as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsRouteRoute,
+} as any)
 const CompileIndexRoute = CompileIndexRouteImport.update({
   id: '/compile/',
   path: '/compile/',
@@ -128,6 +135,11 @@ const AgentExperienceIndexRoute = AgentExperienceIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AgentExperienceRouteRoute,
+} as any)
+const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
+  id: '/$projectId',
+  path: '/$projectId',
+  getParentRoute: () => ProjectsRouteRoute,
 } as any)
 const OauthVerifyRoute = OauthVerifyRouteImport.update({
   id: '/oauth/verify',
@@ -162,7 +174,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof HomeRouteRoute
   '/monitoring': typeof MonitoringRouteRoute
   '/playground': typeof PlaygroundRouteRoute
-  '/projects': typeof ProjectsRouteRoute
+  '/projects': typeof ProjectsRouteRouteWithChildren
   '/request-logs': typeof RequestLogsRouteRoute
   '/retrieval': typeof RetrievalRouteRoute
   '/sessions': typeof SessionsRouteRouteWithChildren
@@ -176,8 +188,10 @@ export interface FileRoutesByFullPath {
   '/compile/new': typeof CompileNewRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/verify': typeof OauthVerifyRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/agent-experience/': typeof AgentExperienceIndexRoute
   '/compile/': typeof CompileIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
   '/sessions/': typeof SessionsIndexRoute
   '/vikingbot/': typeof VikingbotIndexRoute
   '/compile/tasks/$taskId': typeof CompileTasksTaskIdRoute
@@ -187,7 +201,6 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRouteRoute
   '/monitoring': typeof MonitoringRouteRoute
   '/playground': typeof PlaygroundRouteRoute
-  '/projects': typeof ProjectsRouteRoute
   '/request-logs': typeof RequestLogsRouteRoute
   '/retrieval': typeof RetrievalRouteRoute
   '/settings': typeof SettingsRouteRoute
@@ -199,8 +212,10 @@ export interface FileRoutesByTo {
   '/compile/new': typeof CompileNewRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/verify': typeof OauthVerifyRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/agent-experience': typeof AgentExperienceIndexRoute
   '/compile': typeof CompileIndexRoute
+  '/projects': typeof ProjectsIndexRoute
   '/sessions': typeof SessionsIndexRoute
   '/vikingbot': typeof VikingbotIndexRoute
   '/compile/tasks/$taskId': typeof CompileTasksTaskIdRoute
@@ -212,7 +227,7 @@ export interface FileRoutesById {
   '/home': typeof HomeRouteRoute
   '/monitoring': typeof MonitoringRouteRoute
   '/playground': typeof PlaygroundRouteRoute
-  '/projects': typeof ProjectsRouteRoute
+  '/projects': typeof ProjectsRouteRouteWithChildren
   '/request-logs': typeof RequestLogsRouteRoute
   '/retrieval': typeof RetrievalRouteRoute
   '/sessions': typeof SessionsRouteRouteWithChildren
@@ -226,8 +241,10 @@ export interface FileRoutesById {
   '/compile/new': typeof CompileNewRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/verify': typeof OauthVerifyRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/agent-experience/': typeof AgentExperienceIndexRoute
   '/compile/': typeof CompileIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
   '/sessions/': typeof SessionsIndexRoute
   '/vikingbot/': typeof VikingbotIndexRoute
   '/compile/tasks/$taskId': typeof CompileTasksTaskIdRoute
@@ -254,8 +271,10 @@ export interface FileRouteTypes {
     | '/compile/new'
     | '/oauth/consent'
     | '/oauth/verify'
+    | '/projects/$projectId'
     | '/agent-experience/'
     | '/compile/'
+    | '/projects/'
     | '/sessions/'
     | '/vikingbot/'
     | '/compile/tasks/$taskId'
@@ -265,7 +284,6 @@ export interface FileRouteTypes {
     | '/home'
     | '/monitoring'
     | '/playground'
-    | '/projects'
     | '/request-logs'
     | '/retrieval'
     | '/settings'
@@ -277,8 +295,10 @@ export interface FileRouteTypes {
     | '/compile/new'
     | '/oauth/consent'
     | '/oauth/verify'
+    | '/projects/$projectId'
     | '/agent-experience'
     | '/compile'
+    | '/projects'
     | '/sessions'
     | '/vikingbot'
     | '/compile/tasks/$taskId'
@@ -303,8 +323,10 @@ export interface FileRouteTypes {
     | '/compile/new'
     | '/oauth/consent'
     | '/oauth/verify'
+    | '/projects/$projectId'
     | '/agent-experience/'
     | '/compile/'
+    | '/projects/'
     | '/sessions/'
     | '/vikingbot/'
     | '/compile/tasks/$taskId'
@@ -316,7 +338,7 @@ export interface RootRouteChildren {
   HomeRouteRoute: typeof HomeRouteRoute
   MonitoringRouteRoute: typeof MonitoringRouteRoute
   PlaygroundRouteRoute: typeof PlaygroundRouteRoute
-  ProjectsRouteRoute: typeof ProjectsRouteRoute
+  ProjectsRouteRoute: typeof ProjectsRouteRouteWithChildren
   RequestLogsRouteRoute: typeof RequestLogsRouteRoute
   RetrievalRouteRoute: typeof RetrievalRouteRoute
   SessionsRouteRoute: typeof SessionsRouteRouteWithChildren
@@ -454,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SessionsIndexRouteImport
       parentRoute: typeof SessionsRouteRoute
     }
+    '/projects/': {
+      id: '/projects/'
+      path: '/'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof ProjectsRouteRoute
+    }
     '/compile/': {
       id: '/compile/'
       path: '/compile'
@@ -467,6 +496,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/agent-experience/'
       preLoaderRoute: typeof AgentExperienceIndexRouteImport
       parentRoute: typeof AgentExperienceRouteRoute
+    }
+    '/projects/$projectId': {
+      id: '/projects/$projectId'
+      path: '/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof ProjectsRouteRoute
     }
     '/oauth/verify': {
       id: '/oauth/verify'
@@ -519,6 +555,20 @@ const AgentExperienceRouteRouteChildren: AgentExperienceRouteRouteChildren = {
 const AgentExperienceRouteRouteWithChildren =
   AgentExperienceRouteRoute._addFileChildren(AgentExperienceRouteRouteChildren)
 
+interface ProjectsRouteRouteChildren {
+  ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
+  ProjectsIndexRoute: typeof ProjectsIndexRoute
+}
+
+const ProjectsRouteRouteChildren: ProjectsRouteRouteChildren = {
+  ProjectsProjectIdRoute: ProjectsProjectIdRoute,
+  ProjectsIndexRoute: ProjectsIndexRoute,
+}
+
+const ProjectsRouteRouteWithChildren = ProjectsRouteRoute._addFileChildren(
+  ProjectsRouteRouteChildren,
+)
+
 interface SessionsRouteRouteChildren {
   SessionsIndexRoute: typeof SessionsIndexRoute
 }
@@ -549,7 +599,7 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRouteRoute: HomeRouteRoute,
   MonitoringRouteRoute: MonitoringRouteRoute,
   PlaygroundRouteRoute: PlaygroundRouteRoute,
-  ProjectsRouteRoute: ProjectsRouteRoute,
+  ProjectsRouteRoute: ProjectsRouteRouteWithChildren,
   RequestLogsRouteRoute: RequestLogsRouteRoute,
   RetrievalRouteRoute: RetrievalRouteRoute,
   SessionsRouteRoute: SessionsRouteRouteWithChildren,

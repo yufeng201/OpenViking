@@ -1,4 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { ProjectsPage } from './-projects-page'
-
-export const Route = createFileRoute('/projects')({ component: ProjectsPage })
+import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { parseProjectSearch } from './-search'
+export const Route = createFileRoute('/projects')({
+  validateSearch: parseProjectSearch,
+  component: Outlet,
+})
