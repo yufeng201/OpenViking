@@ -1,3 +1,4 @@
+import { projectIdFromUri } from '#/lib/ov-client/project-scope'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
@@ -719,6 +720,11 @@ function PlaygroundWorkbench() {
           </DialogHeader>
           <div className="max-h-[calc(min(86vh,760px)-6rem)] overflow-y-auto px-6 py-5">
             <AddResourceForm
+              initialTargetUri={
+                projectIdFromUri(currentUri)
+                  ? `viking://project/${projectIdFromUri(currentUri)}/resources/`
+                  : undefined
+              }
               onSubmitted={() => {
                 handleUploadDialogOpenChange(false)
                 void invalidateList()
@@ -951,8 +957,14 @@ function PlaygroundActionContent({
   sessionId?: string
   toolbarContainer: HTMLDivElement | null
 }) {
+  const { t } = useTranslation('playground')
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {activePanel === 'agent' && projectIdFromUri(currentUri) && (
+        <p className="border-b bg-muted px-4 py-2 text-xs text-muted-foreground">
+          {t('projects.personalChatNotice')}
+        </p>
+      )}
       {activePanel === 'terminal' ? (
         <TerminalPanel
           currentUri={currentUri}

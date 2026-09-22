@@ -1,3 +1,4 @@
+import { listProjects, projectDirectory } from '#/lib/projects'
 import { fetchFind, fetchFindAllTypes, fetchSearch } from '#/lib/retrieval'
 import {
   getContentRead,
@@ -55,6 +56,20 @@ export async function fetchFsList(
   const normalizedUri = normalizeDirUri(uri)
 
   try {
+    if (normalizedUri === 'viking://project/') {
+      const projects = await listProjects()
+      return {
+        uri: normalizedUri,
+        entries: projects.map((project) =>
+          projectDirectory(
+            `viking://project/${project.project_id}/`,
+            project.project_id,
+            project.name +
+              (project.description ? ` · ${project.description}` : ''),
+          ),
+        ),
+      }
+    }
     const result = await getOvResult<FSListResult>(
       getFsLs({
         query: {
@@ -72,10 +87,19 @@ export async function fetchFsList(
       }),
     )
 
-    return {
-      uri: normalizedUri,
-      entries: normalizeFsEntries(result, normalizedUri),
+    const entries = normalizeFsEntries(result, normalizedUri)
+    if (normalizedUri === 'viking://') {
+      try {
+        await listProjects()
+        if (!entries.some((entry) => entry.name === 'project')) {
+          entries.push(projectDirectory('viking://project/', 'project'))
+        }
+      } catch (error) {
+        // Old servers do not have projects; authentication and connection errors remain visible.
+        if (normalizeOvClientError(error).statusCode !== 404) throw error
+      }
     }
+    return { uri: normalizedUri, entries }
   } catch (error) {
     throw toVikingApiError(error)
   }
@@ -88,6 +112,10 @@ export async function fetchFsTree(
   const normalizedRootUri = normalizeDirUri(rootUri)
 
   try {
+    if (normalizedRootUri === 'viking://project/') {
+      const result = await fetchFsList(normalizedRootUri)
+      return { rootUri: normalizedRootUri, nodes: result.entries }
+    }
     const result = await getOvResult<FSTreeResult>(
       getFsTree({
         query: {
@@ -165,7 +193,8 @@ export async function fetchDirectorySidecarContent(
   level: 'abstract' | 'overview',
 ): Promise<string> {
   const directoryUri = normalizeDirUri(uri)
-  if (directoryUri === 'viking://') return ''
+  if (directoryUri === 'viking://' || directoryUri === 'viking://project/')
+    return ''
   const sidecarUri = `${directoryUri}.${level}.md`
   const result = await fetchFileContent(sidecarUri, {
     limit: -1,

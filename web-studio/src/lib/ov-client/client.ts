@@ -1,4 +1,5 @@
 import axios, { AxiosHeaders } from 'axios'
+import { projectScopeForRequest } from './project-scope'
 import type { InternalAxiosRequestConfig } from 'axios'
 
 import { createClient } from '#/gen/ov-client/client'
@@ -120,8 +121,11 @@ function shouldInjectTelemetry(
 
 function shouldUseAdminApiKey(config: InternalAxiosRequestConfig): boolean {
   const pathname = resolvePathname(config.url)
-  return ADMIN_CONTROL_PLANE_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix),
+  return (
+    (pathname.startsWith('/api/v1/projects') &&
+      (config.method?.toUpperCase() !== 'GET' ||
+        pathname.endsWith('/members'))) ||
+    ADMIN_CONTROL_PLANE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   )
 }
 
@@ -202,6 +206,12 @@ export function createOvClient(options: OvClientOptions = {}): OvClientAdapter {
       headers.delete('X-OpenViking-User')
     }
 
+    const projectId = projectScopeForRequest(config.params, config.data)
+    if (projectId) {
+      headers.set('X-OpenViking-Project', projectId)
+      headers.delete('X-OpenViking-Actor-Peer')
+      headers.delete('X-OpenViking-Workspace-Peer')
+    }
     config.headers = headers
     maybeInjectTelemetry(config, runtimeOptions.defaultTelemetry)
 

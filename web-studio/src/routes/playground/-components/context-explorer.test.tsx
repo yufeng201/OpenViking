@@ -16,6 +16,8 @@ vi.mock('#/routes/resources/-hooks/viking-fm', () => ({
   useVikingFsList: useVikingFsListMock,
 }))
 
+vi.mock('./project-manager', () => ({ ProjectManager: () => null }))
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { name?: string }) => {

@@ -151,6 +151,30 @@ const activity = {
       description: '添加完成后左侧上下文树会刷新，右侧终端可继续定位新资源。',
       submitted: '资源添加任务已提交',
     },
+    projects: {
+      personalChatNotice:
+        '此 Agent 面板使用个人会话。项目共享会话请在上下文树中查看。',
+      error: '项目操作失败',
+      title: '项目管理',
+      hint: '项目资源、会话和记忆由团队共享，成员离开后仍保留。',
+      create: '新建项目',
+      id: '项目 ID',
+      name: '项目名称',
+      description: '项目说明',
+      group: '成员组 ID',
+      groupHint: '使用账号内已有成员组，项目创建后不能更换绑定。',
+      save: '保存',
+      archive: '归档项目',
+      restore: '恢复项目',
+      active: '使用中',
+      archived: '已归档',
+      members: '项目成员',
+      memberHint:
+        '成员关系来自绑定的用户组，修改会同时影响使用该组的其他项目。',
+      remove: '移除',
+      userId: '账号内已有用户 ID',
+      addMember: '添加成员',
+    },
     explorer: {
       title: '上下文树',
       addResource: '添加资源',
@@ -163,6 +187,7 @@ const activity = {
       search: '搜索上下文',
       refresh: '刷新上下文树',
       namespaces: {
+        project: '团队共享的资源、会话和记忆',
         agent: 'Agent 的能力、工具和经验',
         user: '用户个性化记忆',
         resources: 'Agent 可引用的外部资源',

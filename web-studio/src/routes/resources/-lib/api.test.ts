@@ -2,9 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { fetchDirectorySidecarContent, fetchFsList } from './api'
 
-const { getContentReadMock, getFsLsMock } = vi.hoisted(() => ({
-  getContentReadMock: vi.fn(),
-  getFsLsMock: vi.fn(),
+const { getContentReadMock, getFsLsMock, listProjectsMock } = vi.hoisted(
+  () => ({
+    getContentReadMock: vi.fn(),
+    getFsLsMock: vi.fn(),
+    listProjectsMock: vi.fn(),
+  }),
+)
+
+vi.mock('#/lib/projects', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#/lib/projects')>()),
+  listProjects: listProjectsMock,
 }))
 
 vi.mock('#/lib/ov-client', async (importOriginal) => {
@@ -17,6 +25,7 @@ vi.mock('#/lib/ov-client', async (importOriginal) => {
 })
 
 beforeEach(() => {
+  listProjectsMock.mockReset().mockResolvedValue([])
   getContentReadMock.mockReset()
   getFsLsMock.mockReset()
   getFsLsMock.mockResolvedValue({
@@ -72,5 +81,35 @@ describe('fetchFsList', () => {
         sort_order: 'desc',
       }),
     })
+  })
+})
+
+describe('project namespace browsing', () => {
+  it('adds the project namespace to root and lists only accessible projects', async () => {
+    listProjectsMock.mockResolvedValue([
+      {
+        project_id: 'team',
+        name: 'Team',
+        description: 'Shared',
+        status: 'active',
+      },
+    ])
+    const root = await fetchFsList('viking://')
+    expect(root.entries.map((e) => e.uri)).toContain('viking://project/')
+    getFsLsMock.mockClear()
+    const projects = await fetchFsList('viking://project/')
+    expect(projects.entries).toEqual([
+      expect.objectContaining({
+        uri: 'viking://project/team/',
+        abstract: 'Team · Shared',
+      }),
+    ])
+    expect(getFsLsMock).not.toHaveBeenCalled()
+  })
+  it('does not read a sidecar for the virtual project namespace', async () => {
+    await expect(
+      fetchDirectorySidecarContent('viking://project/', 'overview'),
+    ).resolves.toBe('')
+    expect(getContentReadMock).not.toHaveBeenCalled()
   })
 })

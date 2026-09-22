@@ -85,6 +85,7 @@ const DEFAULT_ADDITIONAL_OPTIONS: AdditionalResourceOptionsValue = {
 }
 
 export function AddResourceForm({
+  initialTargetUri = 'viking://resources/',
   initialMode = 'upload',
   initialWatchEnabled = false,
   onAccepted,
@@ -93,6 +94,7 @@ export function AddResourceForm({
   onSubmitted,
   watchRequired = false,
 }: {
+  initialTargetUri?: string
   initialMode?: Mode
   initialWatchEnabled?: boolean
   onAccepted?: (result: RemoteStartResult) => void
@@ -110,7 +112,7 @@ export function AddResourceForm({
   const [remoteResourceType, setRemoteResourceType] =
     useState<RemoteResourceTypeSelection>('auto')
   const [selectedFiles, setSelectedFiles] = useState<SelectedUploadFile[]>([])
-  const [targetUri, setTargetUri] = useState('viking://resources/')
+  const [targetUri, setTargetUri] = useState(initialTargetUri)
   const [destinationMode, setDestinationMode] =
     useState<ResourceDestinationMode>('parent')
   const [strict, setStrict] = useState(false)

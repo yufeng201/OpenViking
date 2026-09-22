@@ -1,3 +1,4 @@
+import { listProjectsIfSupported } from '#/lib/projects'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -224,7 +225,27 @@ export function ResourceUploadProvider({
             },
           }),
         )
-        const serverTasks = normalizeTaskList(result)
+        const projects = await listProjectsIfSupported()
+        const projectResults = await Promise.all(
+          projects.map((project) =>
+            getOvResult<TaskListResult>(
+              getTasks({
+                query: {
+                  limit: TASK_REFRESH_LIMIT,
+                  task_type: RESOURCE_ADD_TASK_TYPE,
+                },
+                headers: { 'X-OpenViking-Project': project.project_id },
+              }),
+            ),
+          ),
+        )
+        const serverTasks = Array.from(
+          new Map(
+            [result, ...projectResults]
+              .flatMap(normalizeTaskList)
+              .map((task) => [task.task_id, task]),
+          ).values(),
+        )
         const fallbackMessages = {
           failed: i18n.t('resources:processingTasks.errors.failed'),
           cancelled: i18n.t('resources:processingTasks.errors.cancelled'),

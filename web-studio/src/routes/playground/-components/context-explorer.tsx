@@ -1,3 +1,4 @@
+import { ProjectManager } from './project-manager'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -61,6 +62,7 @@ export function ContextExplorerHeader({
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold">{t('explorer.title')}</div>
         </div>
+        <ProjectManager />
         {showProcessingTasks ? (
           <Button
             type="button"
@@ -120,17 +122,20 @@ export function ContextExplorerHeader({
 const NAMESPACE_DESCRIPTION_KEYS: Partial<
   Record<
     string,
+    | 'explorer.namespaces.project'
     | 'explorer.namespaces.agent'
     | 'explorer.namespaces.resources'
     | 'explorer.namespaces.user'
   >
 > = {
+  project: 'explorer.namespaces.project',
   agent: 'explorer.namespaces.agent',
   resources: 'explorer.namespaces.resources',
   user: 'explorer.namespaces.user',
 } as const
 
 const NAMESPACE_ORDER: Partial<Record<string, number>> = {
+  project: -1,
   user: 0,
   resources: 1,
   agent: 2,

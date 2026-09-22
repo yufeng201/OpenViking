@@ -159,6 +159,31 @@ const activity = {
         'After it finishes, the context tree on the left refreshes and the Terminal on the right can locate the new resource.',
       submitted: 'Resource add task submitted',
     },
+    projects: {
+      personalChatNotice:
+        'This Agent panel uses personal sessions. Browse shared project sessions in the context tree.',
+      error: 'Project operation failed',
+      title: 'Projects',
+      hint: 'Project resources, sessions and memories belong to the team and remain when a member leaves.',
+      create: 'New project',
+      id: 'Project ID',
+      name: 'Name',
+      description: 'Description',
+      group: 'Member group ID',
+      groupHint:
+        'Use an existing account group. The group binding cannot be changed.',
+      save: 'Save',
+      archive: 'Archive project',
+      restore: 'Restore project',
+      active: 'Active',
+      archived: 'Archived',
+      members: 'Members',
+      memberHint:
+        'Membership follows the bound group. Changes also affect other projects using that group.',
+      remove: 'Remove',
+      userId: 'Existing account user ID',
+      addMember: 'Add member',
+    },
     explorer: {
       title: 'Context tree',
       addResource: 'Add resource',
@@ -171,6 +196,7 @@ const activity = {
       search: 'Search context',
       refresh: 'Refresh tree',
       namespaces: {
+        project: 'Shared project resources, sessions and memories',
         agent: 'Agent capabilities, tools, and experience',
         user: 'Personalized user memories',
         resources: 'External resources the Agent can reference',

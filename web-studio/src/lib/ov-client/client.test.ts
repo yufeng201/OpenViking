@@ -161,3 +161,35 @@ it('scopes Studio root management to the selected account without asserting a da
   expect(readRequestHeader(requests[0], 'X-OpenViking-Account')).toBe('')
   expect(readRequestHeader(requests[1], 'X-OpenViking-Studio-Account')).toBe('')
 })
+
+describe('project request boundaries', () => {
+  it('scopes a project write without leaking into the next personal request', async () => {
+    const { client, requests } = createRecordingClient()
+    await client.instance.post('/api/v1/content/write', {
+      uri: 'viking://project/team/resources/a.md',
+      content: 'a',
+    })
+    await client.instance.get('/api/v1/fs/ls', {
+      params: { uri: 'viking://user/' },
+    })
+    expect(readRequestHeader(requests[0], 'X-OpenViking-Project')).toBe('team')
+    expect(readRequestHeader(requests[1], 'X-OpenViking-Project')).toBe('')
+  })
+  it('uses admin credentials for project management and user credentials for assets', async () => {
+    const { client, requests } = createRecordingClient()
+    client.setConnection({ apiKey: 'user-key', adminApiKey: 'admin-key' })
+    await client.instance.post('/api/v1/projects', { project_id: 'team' })
+    await client.instance.get('/api/v1/projects/team/members')
+    await client.instance.get('/api/v1/projects')
+    await client.instance.get('/api/v1/content/read', {
+      params: { uri: 'viking://project/team/resources/a.md' },
+    })
+    expect(requests.map((r) => readRequestHeader(r, 'X-API-Key'))).toEqual([
+      'admin-key',
+      'admin-key',
+      'user-key',
+      'user-key',
+    ])
+    expect(readRequestHeader(requests[3], 'X-OpenViking-Project')).toBe('team')
+  })
+})

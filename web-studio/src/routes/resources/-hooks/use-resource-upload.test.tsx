@@ -20,6 +20,10 @@ const apiMocks = vi.hoisted(() => ({
   postResources: vi.fn(),
 }))
 
+vi.mock('#/lib/projects', () => ({
+  listProjectsIfSupported: vi.fn(async () => []),
+}))
+
 vi.mock('#/lib/ov-client', () => ({
   getOvResult: async (value: unknown) => value,
   getTasks: apiMocks.getTasks,
