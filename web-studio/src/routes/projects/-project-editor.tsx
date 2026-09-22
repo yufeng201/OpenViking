@@ -103,14 +103,25 @@ export function ProjectEditor({
               )}
             </div>
             {current && (
-              <Link
-                className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-background/50 px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                to="/playground"
-                search={{ uri: `viking://project/${selected}/` }}
-              >
-                {t('projects.browse')}
-                <ArrowUpRightIcon className="size-4 text-muted-foreground" />
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                {(['memories', 'assets'] as const).map((kind) => (
+                  <Link
+                    key={kind}
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-background/50 px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    to="/playground"
+                    search={{
+                      uri: `viking://project/${selected}/${kind === 'memories' ? 'memories/' : ''}`,
+                    }}
+                  >
+                    {t(
+                      kind === 'memories'
+                        ? 'projects.viewMemories'
+                        : 'projects.browse',
+                    )}
+                    <ArrowUpRightIcon className="size-4 text-muted-foreground" />
+                  </Link>
+                ))}
+              </div>
             )}
           </div>
           {current && (
@@ -124,7 +135,7 @@ export function ProjectEditor({
                     key={value}
                     variant="ghost"
                     aria-pressed={tab === value}
-                    className={`-mb-px h-11 rounded-none border-b-2 px-0 hover:bg-transparent ${tab === value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                    className={`-mb-px h-11 rounded-none border-0 border-b-2 px-0 hover:bg-transparent ${tab === value ? 'border-b-primary text-foreground' : 'border-b-transparent text-muted-foreground hover:text-foreground'}`}
                     onClick={() => setTab(value)}
                   >
                     {value === 'details' ? (

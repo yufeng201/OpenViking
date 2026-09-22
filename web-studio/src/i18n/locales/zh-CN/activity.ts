@@ -152,6 +152,7 @@ const activity = {
       submitted: '资源添加任务已提交',
     },
     projects: {
+      viewMemories: '查看项目记忆',
       all: '全部状态',
       statusFilter: '项目状态',
       total: '共 {{count}} 个项目',

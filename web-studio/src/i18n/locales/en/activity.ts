@@ -160,6 +160,7 @@ const activity = {
       submitted: 'Resource add task submitted',
     },
     projects: {
+      viewMemories: 'View project memories',
       all: 'All statuses',
       statusFilter: 'Project status',
       total: '{{count}} projects',
