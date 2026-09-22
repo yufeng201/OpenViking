@@ -133,10 +133,10 @@ const NAMESPACE_DESCRIPTION_KEYS: Partial<
 } as const
 
 const NAMESPACE_ORDER: Partial<Record<string, number>> = {
-  project: -1,
   user: 0,
-  resources: 1,
-  agent: 2,
+  project: 1,
+  resources: 2,
+  agent: 3,
 }
 
 export function ContextTree({
