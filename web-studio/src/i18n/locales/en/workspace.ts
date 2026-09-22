@@ -64,6 +64,7 @@ const workspace = {
       sessions: {
         title: 'Sessions',
       },
+      projects: { title: 'Projects' },
       playground: {
         title: 'Playground',
       },
@@ -392,7 +393,8 @@ const workspace = {
       timing: 'Duration',
       totalDuration: 'Total Time',
       processingNotStarted: 'Not started',
-      processingDurationHelp: 'Worker processing time, including model and I/O calls. Excludes queue and downstream waits; overlapping workers count once. Incomplete or legacy records are unavailable.',
+      processingDurationHelp:
+        'Worker processing time, including model and I/O calls. Excludes queue and downstream waits; overlapping workers count once. Incomplete or legacy records are unavailable.',
       processingDuration: 'Processing Time',
       waitingDuration: 'Waiting Time',
       timingUnavailable: 'Not recorded',

@@ -160,6 +160,22 @@ const activity = {
       submitted: 'Resource add task submitted',
     },
     projects: {
+      search: 'Search projects',
+      empty: 'No matching projects',
+      selectHint: 'Select a project to view its settings and connection guide.',
+      browse: 'Browse project assets',
+      sections: 'Project sections',
+      details: 'Overview',
+      connect: 'Agent setup',
+      chooseGroup: 'Select an existing member group',
+      chooseMember: 'Select an account user',
+      connectHint:
+        'Use a project-compatible plugin. Commit this configuration to your repository so the team shares one project target.',
+      accessHint:
+        'Configure the service URL and your own User API Key on your machine, verify project access, then start a new Agent session. Never commit API keys. Knowing a Project ID does not grant access.',
+      copy: 'Copy configuration',
+      copied: 'Copied',
+
       personalChatNotice:
         'This Agent panel uses personal sessions. Browse shared project sessions in the context tree.',
       error: 'Project operation failed',

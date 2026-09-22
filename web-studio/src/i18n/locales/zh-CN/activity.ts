@@ -152,6 +152,22 @@ const activity = {
       submitted: '资源添加任务已提交',
     },
     projects: {
+      search: '搜索项目名称或 ID',
+      empty: '暂无匹配的项目',
+      selectHint: '选择一个项目，查看项目信息、成员与接入指南。',
+      browse: '浏览项目资产',
+      sections: '项目功能',
+      details: '基本信息',
+      connect: 'Agent 接入',
+      chooseGroup: '选择已有成员组',
+      chooseMember: '选择账号内的用户',
+      connectHint:
+        '使用支持项目模式的插件。将以下配置提交到代码仓库，团队成员即可共用同一个项目目标。',
+      accessHint:
+        '在本机配置服务地址和自己的 User API Key，验证项目权限后开启新 Agent 会话。不要将密钥提交到仓库；知道 Project ID 并不代表获得访问权限。',
+      copy: '复制配置',
+      copied: '已复制',
+
       personalChatNotice:
         '此 Agent 面板使用个人会话。项目共享会话请在上下文树中查看。',
       error: '项目操作失败',

@@ -1,4 +1,3 @@
-import { ProjectManager } from './project-manager'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -62,7 +61,6 @@ export function ContextExplorerHeader({
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold">{t('explorer.title')}</div>
         </div>
-        <ProjectManager />
         {showProcessingTasks ? (
           <Button
             type="button"

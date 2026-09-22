@@ -18,6 +18,7 @@ import { Route as SettingsRouteRouteImport } from './routes/settings/route'
 import { Route as SessionsRouteRouteImport } from './routes/sessions/route'
 import { Route as RetrievalRouteRouteImport } from './routes/retrieval/route'
 import { Route as RequestLogsRouteRouteImport } from './routes/request-logs/route'
+import { Route as ProjectsRouteRouteImport } from './routes/projects/route'
 import { Route as PlaygroundRouteRouteImport } from './routes/playground/route'
 import { Route as MonitoringRouteRouteImport } from './routes/monitoring/route'
 import { Route as HomeRouteRouteImport } from './routes/home/route'
@@ -76,6 +77,11 @@ const RetrievalRouteRoute = RetrievalRouteRouteImport.update({
 const RequestLogsRouteRoute = RequestLogsRouteRouteImport.update({
   id: '/request-logs',
   path: '/request-logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRouteRoute = ProjectsRouteRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlaygroundRouteRoute = PlaygroundRouteRouteImport.update({
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof HomeRouteRoute
   '/monitoring': typeof MonitoringRouteRoute
   '/playground': typeof PlaygroundRouteRoute
+  '/projects': typeof ProjectsRouteRoute
   '/request-logs': typeof RequestLogsRouteRoute
   '/retrieval': typeof RetrievalRouteRoute
   '/sessions': typeof SessionsRouteRouteWithChildren
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRouteRoute
   '/monitoring': typeof MonitoringRouteRoute
   '/playground': typeof PlaygroundRouteRoute
+  '/projects': typeof ProjectsRouteRoute
   '/request-logs': typeof RequestLogsRouteRoute
   '/retrieval': typeof RetrievalRouteRoute
   '/settings': typeof SettingsRouteRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/home': typeof HomeRouteRoute
   '/monitoring': typeof MonitoringRouteRoute
   '/playground': typeof PlaygroundRouteRoute
+  '/projects': typeof ProjectsRouteRoute
   '/request-logs': typeof RequestLogsRouteRoute
   '/retrieval': typeof RetrievalRouteRoute
   '/sessions': typeof SessionsRouteRouteWithChildren
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/monitoring'
     | '/playground'
+    | '/projects'
     | '/request-logs'
     | '/retrieval'
     | '/sessions'
@@ -255,6 +265,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/monitoring'
     | '/playground'
+    | '/projects'
     | '/request-logs'
     | '/retrieval'
     | '/settings'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/monitoring'
     | '/playground'
+    | '/projects'
     | '/request-logs'
     | '/retrieval'
     | '/sessions'
@@ -304,6 +316,7 @@ export interface RootRouteChildren {
   HomeRouteRoute: typeof HomeRouteRoute
   MonitoringRouteRoute: typeof MonitoringRouteRoute
   PlaygroundRouteRoute: typeof PlaygroundRouteRoute
+  ProjectsRouteRoute: typeof ProjectsRouteRoute
   RequestLogsRouteRoute: typeof RequestLogsRouteRoute
   RetrievalRouteRoute: typeof RetrievalRouteRoute
   SessionsRouteRoute: typeof SessionsRouteRouteWithChildren
@@ -383,6 +396,13 @@ declare module '@tanstack/react-router' {
       path: '/request-logs'
       fullPath: '/request-logs'
       preLoaderRoute: typeof RequestLogsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/playground': {
@@ -529,6 +549,7 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRouteRoute: HomeRouteRoute,
   MonitoringRouteRoute: MonitoringRouteRoute,
   PlaygroundRouteRoute: PlaygroundRouteRoute,
+  ProjectsRouteRoute: ProjectsRouteRoute,
   RequestLogsRouteRoute: RequestLogsRouteRoute,
   RetrievalRouteRoute: RetrievalRouteRoute,
   SessionsRouteRoute: SessionsRouteRouteWithChildren,

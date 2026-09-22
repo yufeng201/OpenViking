@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
+  FolderCogIcon,
   MessagesSquareIcon,
   BookOpenIcon,
   BracesIcon,
@@ -98,6 +99,13 @@ const NAV_ITEMS: readonly NavItem[] = [
     section: 'workspace',
     titleKey: 'navigation.playground.title',
     to: '/playground',
+  },
+  {
+    icon: FolderCogIcon,
+    id: 'projects',
+    section: 'workspace',
+    titleKey: 'navigation.projects.title',
+    to: '/projects',
   },
   {
     icon: BotIcon,

@@ -64,6 +64,7 @@ const workspace = {
       sessions: {
         title: '会话',
       },
+      projects: { title: '项目' },
       playground: {
         title: '工作台',
       },
@@ -381,7 +382,8 @@ const workspace = {
       timing: '耗时',
       totalDuration: '总耗时',
       processingNotStarted: '未开始',
-      processingDurationHelp: '仅累计工序实际处理区间，含模型与 I/O 调用；排除排队和等待下游，并行重叠只计一次。旧任务或重启后记录不完整时显示未记录。',
+      processingDurationHelp:
+        '仅累计工序实际处理区间，含模型与 I/O 调用；排除排队和等待下游，并行重叠只计一次。旧任务或重启后记录不完整时显示未记录。',
       processingDuration: '处理耗时',
       waitingDuration: '等待耗时',
       timingUnavailable: '未记录',
