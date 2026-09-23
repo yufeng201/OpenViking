@@ -29,6 +29,7 @@ import type {
   GlobOptions,
   ImportPackOptions,
   Message,
+  ObserverFormat,
   PreflightAssetOptions,
   ReindexOptions,
   RequestOptions,
@@ -156,7 +157,10 @@ export class OpenVikingClient {
           ? options.args
           : undefined,
       tags: options.tags,
-      tag_mode: options.tags ? options.tagMode : undefined,
+      tag_mode:
+        options.tags !== undefined || options.tagMode === "clear"
+          ? (options.tagMode ?? "replace")
+          : undefined,
       telemetry: options.telemetry,
     });
     const local = await nodePathToBlob(source);
@@ -181,7 +185,9 @@ export class OpenVikingClient {
       target_uri: options.targetUri,
     });
     const local =
-      typeof source === "string" ? await nodePathToBlob(source) : undefined;
+      typeof source === "string"
+        ? await nodePathToBlob(source, { allowInlineContent: true })
+        : undefined;
     if (local)
       body.temp_file_id = await this.upload(local.blob, local.filename);
     else body.data = source;
@@ -272,7 +278,9 @@ export class OpenVikingClient {
       telemetry: options.telemetry,
     });
     const local =
-      typeof source === "string" ? await nodePathToBlob(source) : undefined;
+      typeof source === "string"
+        ? await nodePathToBlob(source, { allowInlineContent: true })
+        : undefined;
     if (local)
       body.temp_file_id = await this.upload(local.blob, local.filename);
     else body.data = source;
@@ -597,7 +605,9 @@ export class OpenVikingClient {
       processing_mode: options.processingMode,
       tags: options.tags,
       tag_mode:
-        options.tags === undefined ? undefined : (options.tagMode ?? "replace"),
+        options.tags !== undefined || options.tagMode === "clear"
+          ? (options.tagMode ?? "replace")
+          : undefined,
       wait: options.wait,
       timeout: options.timeout,
       telemetry: options.telemetry,
@@ -663,7 +673,9 @@ export class OpenVikingClient {
       recursive: options.recursive ?? true,
       tags: options.tags,
       tag_mode:
-        options.tags === undefined ? undefined : (options.tagMode ?? "replace"),
+        options.tags !== undefined || options.tagMode === "clear"
+          ? (options.tagMode ?? "replace")
+          : undefined,
     });
     return this.request("POST", "/api/v1/content/reindex", {
       body: mergeExtra(body, options.extra, ["tags", "tag_mode"]),
@@ -1016,20 +1028,28 @@ export class OpenVikingClient {
     });
   }
   /** Return aggregate observer status. */
-  getStatus(): Promise<JsonObject> {
-    return this.request("GET", "/api/v1/observer/system");
+  getStatus(format?: ObserverFormat): Promise<JsonObject> {
+    return this.request("GET", "/api/v1/observer/system", {
+      query: { format },
+    });
   }
   /** Return queue observer status. */
-  queueStatus(): Promise<JsonObject> {
-    return this.request("GET", "/api/v1/observer/queue");
+  queueStatus(format?: ObserverFormat): Promise<JsonObject> {
+    return this.request("GET", "/api/v1/observer/queue", {
+      query: { format },
+    });
   }
   /** Return VikingDB observer status. */
-  vikingDBStatus(): Promise<JsonObject> {
-    return this.request("GET", "/api/v1/observer/vikingdb");
+  vikingDBStatus(format?: ObserverFormat): Promise<JsonObject> {
+    return this.request("GET", "/api/v1/observer/vikingdb", {
+      query: { format },
+    });
   }
   /** Return model observer status. */
-  modelsStatus(): Promise<JsonObject> {
-    return this.request("GET", "/api/v1/observer/models");
+  modelsStatus(format?: ObserverFormat): Promise<JsonObject> {
+    return this.request("GET", "/api/v1/observer/models", {
+      query: { format },
+    });
   }
   /** Return whether the observer system reports healthy. */
   async isHealthy(): Promise<boolean> {

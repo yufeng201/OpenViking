@@ -322,7 +322,7 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const { connection, connectionRole, isConnectionRoleLoading, serverMode } =
     useAppConnection()
   const settingsActive = pathname === '/settings'
-  const usersActive = pathname === '/users'
+  const usersActive = pathname === '/users' || pathname.startsWith('/users/')
   const { canManageUsers } = resolveStudioManagementCapabilities({
     hasControlCredential: Boolean(connection.adminApiKey.trim()),
     isRoleLoading: isConnectionRoleLoading,
