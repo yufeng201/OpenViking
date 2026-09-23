@@ -182,8 +182,14 @@ const activity = {
       connect: 'Agent setup',
       chooseGroup: 'Select an existing member group',
       chooseMember: 'Select an account user',
+      installStep: '1. Install the Agent plugin',
+      installHint:
+        'Run this command in your local terminal, then follow the prompts to select your Agent and install the plugin. Project access requires a plugin version that supports project mode.',
+      terminal: 'Terminal',
+      copyCommand: 'Copy command',
+      configStep: '2. Configure the project',
       connectHint:
-        'Use a project-compatible plugin. Commit this configuration to your repository so the team shares one project target.',
+        'Create .openviking/config.json at the repository root, add the configuration below, and commit it so the team shares one project target.',
       accessHint:
         'Configure the service URL and your own User API Key on your machine, verify project access, then start a new Agent session. Never commit API keys. Knowing a Project ID does not grant access.',
       copy: 'Copy configuration',

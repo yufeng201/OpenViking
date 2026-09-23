@@ -16,6 +16,12 @@ import { useAppConnection } from '#/hooks/use-app-connection'
 import { projectRequest } from '#/lib/projects'
 import type { Project } from '#/lib/projects'
 
+const agentInstallCommand = [
+  'OPENVIKING_REPO_URL=https://github.com/yufeng201/OpenViking.git',
+  'OPENVIKING_REPO_REF=feat/project-workspace',
+  'bash <(curl -fsSL https://raw.githubusercontent.com/yufeng201/OpenViking/feat/project-workspace/examples/memory-plugin-shared/install.sh) --source remote --dist github',
+].join(' \\' + '\n')
+
 export function ProjectEditor({
   project,
   onCreated,
@@ -29,6 +35,7 @@ export function ProjectEditor({
   const creating = !project
   const [tab, setTab] = useState('details')
   const [copied, setCopied] = useState(false)
+  const [installCopied, setInstallCopied] = useState(false)
   const selected = project?.project_id ?? ''
   const [id, setId] = useState(project?.project_id ?? '')
   const [name, setName] = useState(project?.name ?? '')
@@ -357,6 +364,35 @@ export function ProjectEditor({
       )}
       {current && tab === 'connect' && (
         <section className="space-y-4">
+          <h3 className="text-sm font-semibold">{t('projects.installStep')}</h3>
+          <p className="text-sm text-muted-foreground">
+            {t('projects.installHint')}
+          </p>
+          <div className="rounded-lg border bg-muted/40 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <span className="text-sm">{t('projects.terminal')}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await copyTextToClipboard(agentInstallCommand)
+                    setInstallCopied(true)
+                  } catch (reason) {
+                    setError(String(reason))
+                  }
+                }}
+              >
+                {t(installCopied ? 'projects.copied' : 'projects.copyCommand')}
+              </Button>
+            </div>
+            <pre className="whitespace-pre-wrap break-all text-sm">
+              <code>{agentInstallCommand}</code>
+            </pre>
+          </div>
+          <h3 className="pt-2 text-sm font-semibold">
+            {t('projects.configStep')}
+          </h3>
           <p className="text-sm text-muted-foreground">
             {t('projects.connectHint')}
           </p>

@@ -174,8 +174,14 @@ const activity = {
       connect: 'Agent 接入',
       chooseGroup: '选择已有成员组',
       chooseMember: '选择账号内的用户',
+      installStep: '1. 安装 Agent 插件',
+      installHint:
+        '在本机终端执行以下命令，按提示选择你使用的 Agent 并完成插件安装。项目接入需要使用支持项目模式的插件版本。',
+      terminal: '终端',
+      copyCommand: '复制命令',
+      configStep: '2. 配置项目',
       connectHint:
-        '使用支持项目模式的插件。将以下配置提交到代码仓库，团队成员即可共用同一个项目目标。',
+        '在代码仓库根目录创建 .openviking/config.json，填入以下配置并提交到仓库，团队成员即可共用同一个项目目标。',
       accessHint:
         '在本机配置服务地址和自己的 User API Key，验证项目权限后开启新 Agent 会话。不要将密钥提交到仓库；知道 Project ID 并不代表获得访问权限。',
       copy: '复制配置',
