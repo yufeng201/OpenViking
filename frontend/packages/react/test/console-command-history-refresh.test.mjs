@@ -144,6 +144,63 @@ test('Console preserves long read-only commands and keeps failed write bodies ou
   }
 });
 
+test('Console restores content summary commands alongside read after remount', async (t) => {
+  const storage = new JSDOM('', { url: 'https://workbench.test' }).window;
+  t.after(() => storage.close());
+  t.mock.getter(window, 'sessionStorage', () => storage.sessionStorage);
+  const transport = t.mock.fn(async () => ok({ content: 'summary' }));
+  const commands = ['read', 'abstract', 'overview'].map(
+    (name) => `ov ${name} viking://resources/file.md`,
+  );
+  const first = await mount(transport, props(member));
+  try {
+    for (const command of commands) await first.execute(command);
+    assert.equal(transport.mock.calls.length, commands.length);
+  } finally {
+    await first.dispose();
+  }
+
+  const reopened = await mount(transport, props(member));
+  try {
+    await reopened.press('Command history');
+    assert.deepEqual(listedCommands(), commands.reverse());
+  } finally {
+    await reopened.dispose();
+  }
+});
+
+test('Console saves short commands after a command exceeds the storage quota', async (t) => {
+  const storage = new JSDOM('', {
+    url: 'https://workbench.test',
+    storageQuota: 500,
+  }).window;
+  t.after(() => storage.close());
+  t.mock.getter(window, 'sessionStorage', () => storage.sessionStorage);
+  const transport = t.mock.fn(async () => ok({ entries: [] }));
+  const oversized = `ov ls viking://resources/${'a'.repeat(500)}`;
+  const storageKey = 'openviking.console.command-history.v2:' + member;
+  const first = await mount(transport, props(member));
+  try {
+    await first.execute('ov health');
+    const previous = storage.sessionStorage.getItem(storageKey);
+    assert.ok(previous);
+    await first.execute(oversized);
+    assert.equal(storage.sessionStorage.getItem(storageKey), previous);
+    await first.execute('ov status');
+    await first.execute('ov health');
+  } finally {
+    await first.dispose();
+  }
+
+  const reopened = await mount(transport, props(member));
+  try {
+    await reopened.press('Command history');
+    assert.deepEqual(listedCommands(), ['ov health', 'ov status']);
+  } finally {
+    await reopened.dispose();
+  }
+});
+
 test('Console keeps searches rejected by request validation out of persisted history', async (t) => {
   const storage = new JSDOM('', { url: 'https://workbench.test' }).window;
   t.after(() => storage.close());
@@ -165,6 +222,8 @@ test('Console keeps searches rejected by request validation out of persisted his
     assert.equal(storage.sessionStorage.getItem(storageKey), null);
     await first.press('Command history');
     await first.execute(valid);
+    await first.execute('ov search');
+    assert.equal(first.records.at(-1).dataset.status, 'error');
     await first.execute(invalid);
     assert.equal(first.records.at(-1).dataset.status, 'error');
     assert.equal(transport.mock.calls.length, 1);

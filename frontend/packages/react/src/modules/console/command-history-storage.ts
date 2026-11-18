@@ -17,6 +17,8 @@ const persistable = new Set<CommandSpec['name']>([
   'tree',
   'stat',
   'read',
+  'abstract',
+  'overview',
   'find',
   'search',
   'grep',
@@ -84,8 +86,27 @@ function parseStoredEntries(raw: string | null): StoredEntry[] {
 }
 
 function saveEntries(storage: Storage, key: string, entries: StoredEntry[]) {
-  if (entries.length) storage.setItem(key, JSON.stringify(entries));
-  else storage.removeItem(key);
+  if (entries.length === 0) {
+    storage.removeItem(key);
+    return;
+  }
+
+  // Keep the newest entries that fit. A failed write leaves the previous
+  // snapshot intact if even the newest entry is too large.
+  for (let first = 0; first < entries.length; first++) {
+    try {
+      storage.setItem(key, JSON.stringify(entries.slice(first)));
+      return;
+    } catch (error) {
+      if (
+        !error ||
+        typeof error !== 'object' ||
+        !('name' in error) ||
+        error.name !== 'QuotaExceededError'
+      )
+        throw error;
+    }
+  }
 }
 
 function migrateHistory(storage: Storage) {
@@ -102,7 +123,7 @@ function migrateHistory(storage: Storage) {
       try {
         saveEntries(storage, key, parseStoredEntries(raw));
       } catch {
-        // Legacy data has already been removed, even if the new entry exceeds quota.
+        // Legacy data has already been removed, even if storage cannot be updated.
       }
     }
   }
