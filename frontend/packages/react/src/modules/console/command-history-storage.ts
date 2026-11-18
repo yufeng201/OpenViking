@@ -85,27 +85,35 @@ function parseStoredEntries(raw: string | null): StoredEntry[] {
   }
 }
 
+function trySaveEntries(storage: Storage, key: string, entries: StoredEntry[]) {
+  try {
+    storage.setItem(key, JSON.stringify(entries));
+    return true;
+  } catch (error) {
+    if (
+      !error ||
+      typeof error !== 'object' ||
+      !('name' in error) ||
+      error.name !== 'QuotaExceededError'
+    )
+      throw error;
+    return false;
+  }
+}
+
 function saveEntries(storage: Storage, key: string, entries: StoredEntry[]) {
   if (entries.length === 0) {
     storage.removeItem(key);
     return;
   }
 
-  // Keep the newest entries that fit. A failed write leaves the previous
-  // snapshot intact if even the newest entry is too large.
-  for (let first = 0; first < entries.length; first++) {
-    try {
-      storage.setItem(key, JSON.stringify(entries.slice(first)));
-      return;
-    } catch (error) {
-      if (
-        !error ||
-        typeof error !== 'object' ||
-        !('name' in error) ||
-        error.name !== 'QuotaExceededError'
-      )
-        throw error;
-    }
+  if (trySaveEntries(storage, key, entries)) return;
+
+  // Give newer commands priority, then fill the remaining space with older ones.
+  let saved: StoredEntry[] = [];
+  for (const entry of entries.slice().reverse()) {
+    const candidate = [entry, ...saved];
+    if (trySaveEntries(storage, key, candidate)) saved = candidate;
   }
 }
 

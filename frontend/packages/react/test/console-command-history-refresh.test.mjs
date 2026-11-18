@@ -169,7 +169,7 @@ test('Console restores content summary commands alongside read after remount', a
   }
 });
 
-test('Console saves short commands after a command exceeds the storage quota', async (t) => {
+test('Console restores short commands from before and after an oversized command', async (t) => {
   const storage = new JSDOM('', {
     url: 'https://workbench.test',
     storageQuota: 500,
@@ -187,7 +187,12 @@ test('Console saves short commands after a command exceeds the storage quota', a
     await first.execute(oversized);
     assert.equal(storage.sessionStorage.getItem(storageKey), previous);
     await first.execute('ov status');
-    await first.execute('ov health');
+    const persisted = JSON.parse(storage.sessionStorage.getItem(storageKey));
+    assert.deepEqual(
+      persisted.map(({ command }) => command),
+      ['ov health', 'ov status'],
+    );
+    assert.deepEqual(persisted[0], JSON.parse(previous)[0]);
   } finally {
     await first.dispose();
   }
@@ -195,7 +200,7 @@ test('Console saves short commands after a command exceeds the storage quota', a
   const reopened = await mount(transport, props(member));
   try {
     await reopened.press('Command history');
-    assert.deepEqual(listedCommands(), ['ov health', 'ov status']);
+    assert.deepEqual(listedCommands(), ['ov status', 'ov health']);
   } finally {
     await reopened.dispose();
   }
