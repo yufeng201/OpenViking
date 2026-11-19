@@ -30,6 +30,7 @@ export function useFileBrowser({
   locale: localeProp,
   dashboardKinds,
   experienceDataSource,
+  experienceDashboardSlots,
   renderDashboard,
   dashboardLabels,
   controlled = false,
@@ -163,6 +164,7 @@ export function useFileBrowser({
     onOpenUri: openResource,
     dashboardKinds,
     experienceDataSource,
+    experienceDashboardSlots,
     renderDashboard,
     dashboardLabels,
   });
